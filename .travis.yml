@@ -1,0 +1,54 @@
+language: go
+
+arch: arm64
+
+os:
+  - windows
+  - linux
+
+go: 1.11.x
+
+env:
+  - GO111MODULE=off
+
+before_script:
+  - echo "On tip"
+  - git log -2 --pretty=short
+  - ls
+  - echo "Cloning"
+  - git clone https://github.com/golang/go.git master
+  - pwd
+  - ls
+  - echo "Set up"
+  - export GOROOT_BOOTSTRAP=$(go env GOROOT)
+  - go env
+
+install: skip
+
+script:
+  - pwd
+  - cd src
+  - sh ./make.bash
+
+after_success:
+  - del /F ./cmd/dist/dist || true
+  - rm -f ./cmd/dist/dist || true
+  - export GOROOT=
+  - echo $GOROOT
+  - cd ..
+  - pwd
+  - ./bin/go tool dist version
+  - ./bin/go tool dist test
+  - echo "***** Proxy *****"
+  - ./bin/go env -w GOPROXY=localhost:6123/mod
+  - ./bin/go env GOPROXY
+  - ping localhost
+  - Test-NetConnection localhost -port 6123 || true
+  - nmap -p 6123 locahost || true
+  - echo "***** Feature tests *****"
+  - ./bin/go test -run=TestScript/mod_query_exclude cmd/go
+  - ./bin/go test -run=TestScript/mod_query_exclude -v cmd/go
+  - ./bin/go test -run=TestScript/mod_query_exclude -timeout=0 -proxy=localhost:6123/mod cmd/go
+  - ./bin/go test -run=TestScript/mod_query_exclude -v -timeout=0 -proxy=localhost:6123/mod cmd/go
+  - ./bin/go test -run=TestScript/mod_download -v cmd/go
+  - ./bin/go test -run=TestScript/gcflags_patterns -count=1 -short -v cmd/go
