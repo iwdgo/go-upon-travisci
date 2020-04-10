@@ -1,0 +1,297 @@
+From 902a8942d6bb5ab2612641d3c70c1f34613cb026 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Wed, 19 Feb 2020 20:18:00 +0100
+Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
+ file modification
+
+This change allows Chtimes to accept zero time values for its arguments, so:
+
+    os.Chtimes(filename, time.Time{}, tn)
+    os.Chtimes(filename, tn, time.Time{})
+which will avoid making time modifications of the file's
+AccessTime and ModTime respectively.
+
+Fixes #32558
+
+Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
+---
+ src/internal/syscall/unix/at_aix.go           |  1 +
+ src/internal/syscall/unix/at_darwin.go        |  2 +
+ src/internal/syscall/unix/at_freebsd.go       |  2 +
+ src/internal/syscall/unix/at_solaris.go       |  2 +
+ .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
+ src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
+ src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
+ .../syscall/unix/at_sysnum_openbsd.go         |  2 +
+ .../syscall/windows/syscall_windows.go        |  2 +
+ src/os/file_plan9.go                          |  7 +++
+ src/os/file_posix.go                          |  8 +++
+ src/os/file_unix.go                           |  2 +
+ src/os/file_windows.go                        |  2 +
+ src/os/os_test.go                             | 58 +++++++++++++++++++
+ src/syscall/types_windows.go                  |  3 +
+ 15 files changed, 97 insertions(+)
+
+diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
+index 425df98211..fdfb8c5a0c 100644
+--- a/src/internal/syscall/unix/at_aix.go
++++ b/src/internal/syscall/unix/at_aix.go
+@@ -11,4 +11,5 @@ package unix
+ const (
+ 	AT_REMOVEDIR        = 0x1
+ 	AT_SYMLINK_NOFOLLOW = 0x1
++	UTIME_OMIT = -0x3
+ )
+diff --git a/src/internal/syscall/unix/at_darwin.go b/src/internal/syscall/unix/at_darwin.go
+index a88a27e0c6..3dfe5d16d1 100644
+--- a/src/internal/syscall/unix/at_darwin.go
++++ b/src/internal/syscall/unix/at_darwin.go
+@@ -9,6 +9,8 @@ import (
+ 	_ "unsafe" // for linkname
+ )
+ 
++const UTIME_OMIT = -0x1
++
+ func Unlinkat(dirfd int, path string, flags int) error {
+ 	return unlinkat(dirfd, path, flags)
+ }
+diff --git a/src/internal/syscall/unix/at_freebsd.go b/src/internal/syscall/unix/at_freebsd.go
+index e171f4dbb5..6cc5e8aef5 100644
+--- a/src/internal/syscall/unix/at_freebsd.go
++++ b/src/internal/syscall/unix/at_freebsd.go
+@@ -12,6 +12,8 @@ import (
+ const (
+ 	AT_REMOVEDIR        = 0x800
+ 	AT_SYMLINK_NOFOLLOW = 0x200
++
++	UTIME_OMIT = -0x2
+ )
+ 
+ func Unlinkat(dirfd int, path string, flags int) error {
+diff --git a/src/internal/syscall/unix/at_solaris.go b/src/internal/syscall/unix/at_solaris.go
+index e917c4fc9b..bde6f43a86 100644
+--- a/src/internal/syscall/unix/at_solaris.go
++++ b/src/internal/syscall/unix/at_solaris.go
+@@ -16,4 +16,6 @@ func syscall6(trap, nargs, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err
+ const (
+ 	AT_REMOVEDIR        = 0x1
+ 	AT_SYMLINK_NOFOLLOW = 0x1000
++
++	UTIME_OMIT = ((1 << 30) - 21)
+ )
+diff --git a/src/internal/syscall/unix/at_sysnum_dragonfly.go b/src/internal/syscall/unix/at_sysnum_dragonfly.go
+index cec9abce6a..3ae70c3687 100644
+--- a/src/internal/syscall/unix/at_sysnum_dragonfly.go
++++ b/src/internal/syscall/unix/at_sysnum_dragonfly.go
+@@ -12,3 +12,5 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
+ 
+ const AT_REMOVEDIR = 0x2
+ const AT_SYMLINK_NOFOLLOW = 0x1
++
++const UTIME_OMIT = -0x2
+diff --git a/src/internal/syscall/unix/at_sysnum_linux.go b/src/internal/syscall/unix/at_sysnum_linux.go
+index fa7cd75d42..f31c3a9315 100644
+--- a/src/internal/syscall/unix/at_sysnum_linux.go
++++ b/src/internal/syscall/unix/at_sysnum_linux.go
+@@ -11,3 +11,5 @@ const openatTrap uintptr = syscall.SYS_OPENAT
+ 
+ const AT_REMOVEDIR = 0x200
+ const AT_SYMLINK_NOFOLLOW = 0x100
++
++const UTIME_OMIT = 0x3ffffffe
+diff --git a/src/internal/syscall/unix/at_sysnum_netbsd.go b/src/internal/syscall/unix/at_sysnum_netbsd.go
+index fe45e296d7..02f22ad763 100644
+--- a/src/internal/syscall/unix/at_sysnum_netbsd.go
++++ b/src/internal/syscall/unix/at_sysnum_netbsd.go
+@@ -12,3 +12,5 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
+ 
+ const AT_REMOVEDIR = 0x800
+ const AT_SYMLINK_NOFOLLOW = 0x200
++
++const UTIME_OMIT = ((1 << 30) - 2)
+diff --git a/src/internal/syscall/unix/at_sysnum_openbsd.go b/src/internal/syscall/unix/at_sysnum_openbsd.go
+index c2d48b9914..fd389477ec 100644
+--- a/src/internal/syscall/unix/at_sysnum_openbsd.go
++++ b/src/internal/syscall/unix/at_sysnum_openbsd.go
+@@ -12,3 +12,5 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
+ 
+ const AT_REMOVEDIR = 0x08
+ const AT_SYMLINK_NOFOLLOW = 0x02
++
++const UTIME_OMIT = -0x1
+diff --git a/src/internal/syscall/windows/syscall_windows.go b/src/internal/syscall/windows/syscall_windows.go
+index edf0b5a40b..f51f023da7 100644
+--- a/src/internal/syscall/windows/syscall_windows.go
++++ b/src/internal/syscall/windows/syscall_windows.go
+@@ -323,6 +323,8 @@ const (
+ 	VOLUME_NAME_GUID = 0x1
+ 	VOLUME_NAME_NONE = 0x4
+ 	VOLUME_NAME_NT   = 0x2
++
++	UTIME_OMIT = 0
+ )
+ 
+ //sys	GetFinalPathNameByHandle(file syscall.Handle, filePath *uint16, filePathSize uint32, flags uint32) (n uint32, err error) = kernel32.GetFinalPathNameByHandleW
+diff --git a/src/os/file_plan9.go b/src/os/file_plan9.go
+index ac68cf7fed..05d7361a73 100644
+--- a/src/os/file_plan9.go
++++ b/src/os/file_plan9.go
+@@ -402,6 +402,7 @@ func chmod(name string, mode FileMode) error {
+ 
+ // Chtimes changes the access and modification times of the named
+ // file, similar to the Unix utime() or utimes() functions.
++// A zero time.Time value will leave the corresponding file time unchanged.
+ //
+ // The underlying filesystem may truncate or round the values to a
+ // less precise time unit.
+@@ -412,6 +413,12 @@ func Chtimes(name string, atime time.Time, mtime time.Time) error {
+ 	d.Null()
+ 	d.Atime = uint32(atime.Unix())
+ 	d.Mtime = uint32(mtime.Unix())
++	if atime.IsZero() {
++		d.Atime = 0xFFFFFFFF
++	}
++	if mtime.IsZero() {
++		d.Mtime = 0xFFFFFFFF
++	}
+ 
+ 	var buf [syscall.STATFIXLEN]byte
+ 	n, err := d.Marshal(buf[:])
+diff --git a/src/os/file_posix.go b/src/os/file_posix.go
+index 24ea554b62..d543137ea5 100644
+--- a/src/os/file_posix.go
++++ b/src/os/file_posix.go
+@@ -163,6 +163,7 @@ func (f *File) Sync() error {
+ 
+ // Chtimes changes the access and modification times of the named
+ // file, similar to the Unix utime() or utimes() functions.
++// A zero time.Time value will leave the corresponding file time unchanged.
+ //
+ // The underlying filesystem may truncate or round the values to a
+ // less precise time unit.
+@@ -171,6 +172,13 @@ func Chtimes(name string, atime time.Time, mtime time.Time) error {
+ 	var utimes [2]syscall.Timespec
+ 	utimes[0] = syscall.NsecToTimespec(atime.UnixNano())
+ 	utimes[1] = syscall.NsecToTimespec(mtime.UnixNano())
++	utimeOmit := syscall.Timespec{Sec: 0, Nsec: _UTIME_OMIT}
++	if atime.IsZero() {
++		utimes[0] = utimeOmit
++	}
++	if mtime.IsZero() {
++		utimes[1] = utimeOmit
++	}
+ 	if e := syscall.UtimesNano(fixLongPath(name), utimes[0:]); e != nil {
+ 		return &PathError{"chtimes", name, e}
+ 	}
+diff --git a/src/os/file_unix.go b/src/os/file_unix.go
+index b93e2bd56a..d743523f15 100644
+--- a/src/os/file_unix.go
++++ b/src/os/file_unix.go
+@@ -14,6 +14,8 @@ import (
+ 	"syscall"
+ )
+ 
++const _UTIME_OMIT = unix.UTIME_OMIT
++
+ // fixLongPath is a noop on non-Windows platforms.
+ func fixLongPath(path string) string {
+ 	return path
+diff --git a/src/os/file_windows.go b/src/os/file_windows.go
+index 0d8c0fd20d..0d4f46298d 100644
+--- a/src/os/file_windows.go
++++ b/src/os/file_windows.go
+@@ -14,6 +14,8 @@ import (
+ 	"unsafe"
+ )
+ 
++const _UTIME_OMIT = windows.UTIME_OMIT
++
+ // file is the real representation of *File.
+ // The extra level of indirection ensures that no clients of os
+ // can overwrite this data, which could cause the finalizer
+diff --git a/src/os/os_test.go b/src/os/os_test.go
+index e8c64510f5..7246e6b81f 100644
+--- a/src/os/os_test.go
++++ b/src/os/os_test.go
+@@ -1277,6 +1277,64 @@ func TestFileChdir(t *testing.T) {
+ 	}
+ }
+ 
++func TestChtimesWithZeroTimes(t *testing.T) {
++
++	t0 := time.Now().Add(-1 * time.Hour)
++	tests := []struct {
++		mTime     time.Time
++		aTime     time.Time
++		wantATime time.Time
++		wantMTime time.Time
++	}{
++		{
++			aTime:     t0.Add(200 * time.Second),
++			wantMTime: t0,
++			wantATime: t0.Add(200 * time.Second),
++		},
++		{
++			mTime:     t0.Add(100 * time.Second),
++			wantMTime: t0.Add(100 * time.Second),
++			wantATime: t0,
++		},
++		{
++			mTime:     t0.Add(100 * time.Second),
++			aTime:     t0.Add(300 * time.Second),
++			wantMTime: t0.Add(100 * time.Second),
++			wantATime: t0.Add(300 * time.Second),
++		},
++	}
++	for _, tt := range tests {
++		tt := tt
++		testName := fmt.Sprintf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
++		t.Run(testName, func(t *testing.T) {
++			file := newFile("chtimes-with-zero", t)
++			defer Remove(file.Name())
++			if _, err := file.Write([]byte("Hello, World!")); err != nil {
++				t.Fatal(err)
++			}
++			// Start off both MTime and ATime at t0.
++			if err := Chtimes(file.Name(), t0, t0); err != nil {
++				t.Fatal(err)
++			}
++			// Now change the times accordingly.
++			if err := Chtimes(file.Name(), tt.aTime, tt.mTime); err != nil {
++				t.Fatal(err)
++			}
++			// Finally verify the expectations.
++			fi, err := Stat(file.Name())
++			if err != nil {
++				t.Fatal(err)
++			}
++			if got, want := fi.ModTime(), tt.wantMTime; !got.Equal(want) {
++				t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			}
++			if got, want := Atime(fi), tt.wantATime; !got.Equal(want) {
++				t.Errorf("AcessTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			}
++		})
++	}
++}
++
+ func TestChdirAndGetwd(t *testing.T) {
+ 	// TODO(brainman): file.Chdir() is not implemented on windows.
+ 	if runtime.GOOS == "windows" {
+diff --git a/src/syscall/types_windows.go b/src/syscall/types_windows.go
+index 0349f3b180..9563d3e8c0 100644
+--- a/src/syscall/types_windows.go
++++ b/src/syscall/types_windows.go
+@@ -362,6 +362,9 @@ func (ft *Filetime) Nanoseconds() int64 {
+ }
+ 
+ func NsecToFiletime(nsec int64) (ft Filetime) {
++	if nsec <= 0 {
++		return
++	}
+ 	// convert into 100-nanosecond
+ 	nsec /= 100
+ 	// change starting time to January 1, 1601
+-- 
+2.22.0.windows.1
+
