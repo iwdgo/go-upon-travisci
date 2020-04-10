@@ -16,8 +16,10 @@ before_script:
   - git log -2 --pretty=short
   - ls
   - echo "Cloning"
-  - git clone https://github.com/golang/go.git master
+  - git clone --branch master --single-branch --no-tags https://github.com/golang/go.git
   - pwd
+  - ls
+  - cd go
   - ls
   - echo "Set up"
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
