@@ -1,6 +1,6 @@
 language: go
 
-arch: arm64
+arch: amd64
 
 os:
   - windows
@@ -12,11 +12,7 @@ env:
   - GO111MODULE=off
 
 install:
-  - echo "Updating git as needed"
-  - add-apt-repository ppa:git-core/ppa || true
-  - apt-get update || true
-  - apt-get install git || true
-
+  - echo ""
 
 before_script:
   - echo "Cloning"
@@ -35,6 +31,7 @@ before_script:
   - cd ../..
   - pwd
   - mv make_travisci.bash ./golang/go/src/make.bash
+  - git apply -v issue29515.patch..
 
 script:
   - pwd
@@ -42,7 +39,6 @@ script:
   - sh ./make.bash
 
 after_success:
-  - del /F ./cmd/dist/dist || true
   - rm -f ./cmd/dist/dist || true
   - export GOROOT=
   - echo $GOROOT
