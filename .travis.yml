@@ -31,12 +31,11 @@ before_script:
   - cd ../..
   - pwd
   - mv make_travisci.bash ./golang/go/src/make.bash
-  - cd golang/go
+  - cd golang/go/src
   - git apply -v ../../issue29515.patch
 
 script:
   - pwd
-  - cd ./src
   - sh ./make.bash
 
 after_success:
