@@ -23,9 +23,7 @@ before_script:
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - go env
   - echo "Merge travis ci fixes"
-  - git remote add travisci https://github.com/iwdgo/issue29515
-  - git fetch travisci
-  - git merge origin/travisci
+  - mv make_travisci.bash make.bash
 
 install: skip
 
