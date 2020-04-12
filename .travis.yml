@@ -13,8 +13,10 @@ env:
 
 before_script:
   - echo "Cloning"
+  - mkdir golang
+  - cd golang
   - git version
-  - git clone --branch master --single-branch https://github.com/golang/go.git
+  - git clone --branch master --single-branch --no-tags https://github.com/golang/go.git
   - pwd
   - cd go
   - echo "On tip"
@@ -23,13 +25,15 @@ before_script:
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - go env
   - echo "Merge travis ci fixes"
-  - mv make_travisci.bash make.bash
+  - cd ../..
+  - pwd
+  - mv make_travisci.bash ./golang/go/make.bash
 
 install: skip
 
 script:
   - pwd
-  - cd src
+  - cd golang/go/src
   - sh ./make.bash
 
 after_success:
