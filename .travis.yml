@@ -22,7 +22,8 @@ before_script:
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - go env
   - echo "Merge travis ci fixes"
-  - git merge travisci
+  - git fetch origin travisci
+  - git merge origin/travisci
 
 install: skip
 
