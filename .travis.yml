@@ -11,6 +11,13 @@ go: 1.11.x
 env:
   - GO111MODULE=off
 
+install:
+  - echo "Updating git as needed"
+  - add-apt-repository ppa:git-core/ppa || true
+  - apt-get update || true
+  - apt-get install git || true
+
+
 before_script:
   - echo "Cloning"
   - mkdir golang
@@ -27,9 +34,7 @@ before_script:
   - echo "Merge travis ci fixes"
   - cd ../..
   - pwd
-  - mv make_travisci.bash ./golang/go/make.bash
-
-install: skip
+  - mv make_travisci.bash ./golang/go/src/make.bash
 
 script:
   - pwd
