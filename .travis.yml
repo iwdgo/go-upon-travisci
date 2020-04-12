@@ -32,7 +32,7 @@ before_script:
   - pwd
   - mv make_travisci.bash ./golang/go/src/make.bash
   - cd golang/go
-  - git apply -v ../../issue29515.patch..
+  - git apply -v ../../issue29515.patch
 
 script:
   - pwd
