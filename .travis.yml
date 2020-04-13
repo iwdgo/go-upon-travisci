@@ -31,15 +31,16 @@ before_script:
   - cd ../..
   - pwd
   - mv make_travisci.bash ./golang/go/src/make.bash
-  - cd golang/go/src
-  - git apply -v ../../../issue29515.patch
+  - mv *.patch ./golang/go/
+  - cd golang/go
+  - git apply -v *.patch
 
 script:
   - pwd
   - sh ./make.bash
 
 after_success:
-  - rm -f ./cmd/dist/dist || true
+  - rm -f ./cmd/dist/dist
   - export GOROOT=
   - echo $GOROOT
   - cd ..
@@ -49,7 +50,7 @@ after_success:
   - echo "***** Proxy *****"
   - ./bin/go env -w GOPROXY=localhost:6123/mod
   - ./bin/go env GOPROXY
-  - ping localhost
+  - ping -c 1 localhost
   - Test-NetConnection localhost -port 6123 || true
   - nmap -p 6123 locahost || true
   - echo "***** Feature tests *****"
