@@ -1,0 +1,42 @@
+From 933d0f48460419c87879f5763f7c7e816bfaacbd Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Sun, 12 Apr 2020 21:28:41 +0200
+Subject: [PATCH] cmd/go: remove output of proxy_test log in tests
+
+Fixes #29515
+Fixes #30604
+
+Change-Id: Ie75a331cd6ca51806c5720443506d4fe0bec28cf
+---
+ src/cmd/go/proxy_test.go | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/src/cmd/go/proxy_test.go b/src/cmd/go/proxy_test.go
+index 8214488a59..6ea7f0ec05 100644
+--- a/src/cmd/go/proxy_test.go
++++ b/src/cmd/go/proxy_test.go
+@@ -50,6 +50,12 @@ func StartProxy() {
+ 	proxyOnce.Do(func() {
+ 		readModList()
+ 		addr := *proxyAddr
++		quiet := ""
++		if *proxyAddr == "" && !testing.Verbose() {
++			// -proxy flag was not used
++			// default is quiet unless -v is requested
++			quiet = "/quiet"
++		}
+ 		if addr == "" {
+ 			addr = "localhost:0"
+ 		}
+@@ -58,7 +64,7 @@ func StartProxy() {
+ 			log.Fatal(err)
+ 		}
+ 		*proxyAddr = l.Addr().String()
+-		proxyURL = "http://" + *proxyAddr + "/mod"
++		proxyURL = "http://" + *proxyAddr + "/mod" + quiet
+ 		fmt.Fprintf(os.Stderr, "go test proxy running at GOPROXY=%s\n", proxyURL)
+ 		go func() {
+ 			log.Fatalf("go proxy: http.Serve: %v", http.Serve(l, http.HandlerFunc(proxyHandler)))
+-- 
+2.22.0.windows.1
+
