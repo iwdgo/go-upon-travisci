@@ -4,7 +4,7 @@ arch: arm64
 
 os: linux
 
-go: 1.11.x
+go: 1.14.x
 
 env:
   - GO111MODULE=off
@@ -32,6 +32,10 @@ before_script:
   - mv *.patch ./golang/go
   - cd golang/go
   - git apply -v --ignore-space-change --ignore-whitespace --whitespace=fix *.patch
+  - echo "Gen compiler rules"
+  - cd src/cmd/compile/internal/ssa/gen
+  - go run *.go
+  - cd ../../../../../..
 
 script:
   - pwd
