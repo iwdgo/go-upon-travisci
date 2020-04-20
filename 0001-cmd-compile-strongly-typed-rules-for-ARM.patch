@@ -1,15 +1,15 @@
-From fc3b64037133d7ba2265baa9b6f7a2182dbc6c2a Mon Sep 17 00:00:00 2001
+From de780240694dc0dc5bab9578d3cac29d0bc01893 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 19 Apr 2020 07:01:25 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
 
 Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 190 ++++++++++-----------
- 1 file changed, 95 insertions(+), 95 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 174 ++++++++++-----------
+ 1 file changed, 87 insertions(+), 87 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..910f575ae0 100644
+index a8cea68c5f..2f6d986931 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -87,26 +87,15 @@ index a8cea68c5f..910f575ae0 100644
  (ANDconst [c] (MOVWconst [d])) -> (MOVWconst [c&d])
  (ANDconst [c] (ANDconst [d] x)) -> (ANDconst [c&d] x)
  (ORconst [c] (MOVWconst [d])) -> (MOVWconst [c|d])
-@@ -853,13 +853,13 @@
+@@ -853,7 +853,7 @@
  (XORconst [c] (MOVWconst [d])) -> (MOVWconst [c^d])
  (XORconst [c] (XORconst [d] x)) -> (XORconst [c^d] x)
  (BICconst [c] (MOVWconst [d])) -> (MOVWconst [d&^c])
 -(BICconst [c] (BICconst [d] x)) -> (BICconst [int64(int32(c|d))] x)
 +(BICconst [c] (BICconst [d] x)) => (BICconst [int32(c|d)] x)
  (MVN (MOVWconst [c])) -> (MOVWconst [^c])
--(MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
--(MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
--(MOVHreg (MOVWconst [c])) -> (MOVWconst [int64(int16(c))])
--(MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
--(MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
-+(MOVBreg (MOVWconst [c])) => (MOVWconst [int8(c)])
-+(MOVBUreg (MOVWconst [c])) => (MOVWconst [uint8(c)])
-+(MOVHreg (MOVWconst [c])) => (MOVWconst [int64(int16(c))])
-+(MOVHUreg (MOVWconst [c])) => (MOVWconst [int64(uint16(c))])
-+(MOVWreg (MOVWconst [c])) => (MOVWconst [c])
- // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
- (BFX [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
- (BFXU [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))))])
+ (MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
+ (MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
 @@ -1095,61 +1095,61 @@
  (CMNshiftRAreg (MOVWconst [c]) x y) -> (CMNconst [c] (SRA <x.Type> x y))
  
@@ -151,21 +140,6 @@ index a8cea68c5f..910f575ae0 100644
 -(BICshiftLL x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(uint32(c)<<uint64(d)))])
 -(BICshiftRL x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(uint32(c)>>uint64(d)))])
 -(BICshiftRA x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(c)>>uint64(d))])
--(MVNshiftLL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)<<uint64(d))])
--(MVNshiftRL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)>>uint64(d))])
--(MVNshiftRA (MOVWconst [c]) [d]) -> (MOVWconst [^int64(int32(c)>>uint64(d))])
--(CMPshiftLL x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(uint32(c)<<uint64(d)))])
--(CMPshiftRL x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(uint32(c)>>uint64(d)))])
--(CMPshiftRA x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(c)>>uint64(d))])
--(TSTshiftLL x (MOVWconst [c]) [d]) -> (TSTconst x [int64(int32(uint32(c)<<uint64(d)))])
--(TSTshiftRL x (MOVWconst [c]) [d]) -> (TSTconst x [int64(int32(uint32(c)>>uint64(d)))])
--(TSTshiftRA x (MOVWconst [c]) [d]) -> (TSTconst x [int64(int32(c)>>uint64(d))])
--(TEQshiftLL x (MOVWconst [c]) [d]) -> (TEQconst x [int64(int32(uint32(c)<<uint64(d)))])
--(TEQshiftRL x (MOVWconst [c]) [d]) -> (TEQconst x [int64(int32(uint32(c)>>uint64(d)))])
--(TEQshiftRA x (MOVWconst [c]) [d]) -> (TEQconst x [int64(int32(c)>>uint64(d))])
--(CMNshiftLL x (MOVWconst [c]) [d]) -> (CMNconst x [int64(int32(uint32(c)<<uint64(d)))])
--(CMNshiftRL x (MOVWconst [c]) [d]) -> (CMNconst x [int64(int32(uint32(c)>>uint64(d)))])
--(CMNshiftRA x (MOVWconst [c]) [d]) -> (CMNconst x [int64(int32(c)>>uint64(d))])
 +(ADDshiftLL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)<<uint64(d))])
 +(ADDshiftRL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)<<uint64(d))])
 +(ADDshiftRA x (MOVWconst [c]) [d]) => (ADDconst x [int32(c)>>uint64(d)])
@@ -206,9 +180,21 @@ index a8cea68c5f..910f575ae0 100644
 +(BICshiftLL x (MOVWconst [c]) [d]) => (BICconst x [int32(uint32(c)<<uint64(d))])
 +(BICshiftRL x (MOVWconst [c]) [d]) => (BICconst x [int32(uint32(c)>>uint64(d))])
 +(BICshiftRA x (MOVWconst [c]) [d]) => (BICconst x [int32(c)>>uint64(d)])
-+(MVNshiftLL (MOVWconst [c]) [d]) => (MOVWconst [^int64(uint32(c)<<uint64(d))])
-+(MVNshiftRL (MOVWconst [c]) [d]) => (MOVWconst [^int64(uint32(c)>>uint64(d))])
-+(MVNshiftRA (MOVWconst [c]) [d]) => (MOVWconst [^int64(int32(c)>>uint64(d))])
+ (MVNshiftLL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)<<uint64(d))])
+ (MVNshiftRL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)>>uint64(d))])
+ (MVNshiftRA (MOVWconst [c]) [d]) -> (MOVWconst [^int64(int32(c)>>uint64(d))])
+-(CMPshiftLL x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(uint32(c)<<uint64(d)))])
+-(CMPshiftRL x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(uint32(c)>>uint64(d)))])
+-(CMPshiftRA x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(c)>>uint64(d))])
+-(TSTshiftLL x (MOVWconst [c]) [d]) -> (TSTconst x [int64(int32(uint32(c)<<uint64(d)))])
+-(TSTshiftRL x (MOVWconst [c]) [d]) -> (TSTconst x [int64(int32(uint32(c)>>uint64(d)))])
+-(TSTshiftRA x (MOVWconst [c]) [d]) -> (TSTconst x [int64(int32(c)>>uint64(d))])
+-(TEQshiftLL x (MOVWconst [c]) [d]) -> (TEQconst x [int64(int32(uint32(c)<<uint64(d)))])
+-(TEQshiftRL x (MOVWconst [c]) [d]) -> (TEQconst x [int64(int32(uint32(c)>>uint64(d)))])
+-(TEQshiftRA x (MOVWconst [c]) [d]) -> (TEQconst x [int64(int32(c)>>uint64(d))])
+-(CMNshiftLL x (MOVWconst [c]) [d]) -> (CMNconst x [int64(int32(uint32(c)<<uint64(d)))])
+-(CMNshiftRL x (MOVWconst [c]) [d]) -> (CMNconst x [int64(int32(uint32(c)>>uint64(d)))])
+-(CMNshiftRA x (MOVWconst [c]) [d]) -> (CMNconst x [int64(int32(c)>>uint64(d))])
 +(CMPshiftLL x (MOVWconst [c]) [d]) => (CMPconst x [int32(uint32(c)<<uint64(d))])
 +(CMPshiftRL x (MOVWconst [c]) [d]) => (CMPconst x [int32(uint32(c)>>uint64(d))])
 +(CMPshiftRA x (MOVWconst [c]) [d]) => (CMPconst x [int32(c)>>uint64(d)])

@@ -26,8 +26,9 @@ before_script:
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - go env
   - echo "Toolstash"
-  - go get -u golang.org/x/tools/... || true
-  - toolstash || true
+  - go get -u golang.org/x/tools/...
+  - toolstash
+  - toolstash -v save || true
   - echo "Merge travis ci fixes"
   - cd ../..
   - pwd
