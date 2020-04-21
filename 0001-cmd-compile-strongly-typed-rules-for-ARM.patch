@@ -1,4 +1,4 @@
-From de780240694dc0dc5bab9578d3cac29d0bc01893 Mon Sep 17 00:00:00 2001
+From a4aa1349096872fd636e57ad1bc258f64372a285 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 19 Apr 2020 07:01:25 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
@@ -9,7 +9,7 @@ Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
  1 file changed, 87 insertions(+), 87 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..2f6d986931 100644
+index a8cea68c5f..9bc6f84c76 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -141,7 +141,7 @@ index a8cea68c5f..2f6d986931 100644
 -(BICshiftRL x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(uint32(c)>>uint64(d)))])
 -(BICshiftRA x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(c)>>uint64(d))])
 +(ADDshiftLL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)<<uint64(d))])
-+(ADDshiftRL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)<<uint64(d))])
++(ADDshiftRL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)>>uint64(d))])
 +(ADDshiftRA x (MOVWconst [c]) [d]) => (ADDconst x [int32(c)>>uint64(d)])
 +(ADCshiftLL x (MOVWconst [c]) [d] flags) => (ADCconst x [uint32(c)<<uint64(d)] flags)
 +(ADCshiftRL x (MOVWconst [c]) [d] flags) => (ADCconst x [uint32(c)>>uint64(d)] flags)
