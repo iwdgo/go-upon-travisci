@@ -1,4 +1,4 @@
-From 95792ec5e6fb70121d7303f08fa691a525dfff4d Mon Sep 17 00:00:00 2001
+From c250dc6f56fcf7cae93bd20ba8b907bc33a0e697 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 19 Apr 2020 07:01:25 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
@@ -9,7 +9,7 @@ Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
  1 file changed, 87 insertions(+), 87 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..3ec994683d 100644
+index a8cea68c5f..2e9f6b95f8 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -67,9 +67,9 @@ index a8cea68c5f..3ec994683d 100644
 +(SUBconst [c] (MOVWconst [d])) => (MOVWconst [d-c])
 +(SUBconst [c] (SUBconst [d] x)) => (ADDconst [-c-d] x)
 +(SUBconst [c] (ADDconst [d] x)) => (ADDconst [-c+d] x)
-+(SUBconst [c] (RSBconst [d] x)) => (RSBconst [int32(-c+d)] x)
-+(SBCconst [c] (ADDconst [d] x) flags) => (SBCconst [int32(c-d)] x flags)
-+(SBCconst [c] (SUBconst [d] x) flags) => (SBCconst [int32(c+d)] x flags)
++(SUBconst [c] (RSBconst [d] x)) => (RSBconst [-c+d] x)
++(SBCconst [c] (ADDconst [d] x) flags) => (SBCconst [c-d] x flags)
++(SBCconst [c] (SUBconst [d] x) flags) => (SBCconst [c+d] x flags)
 +(RSBconst [c] (MOVWconst [d])) => (MOVWconst [c-d])
 +(RSBconst [c] (RSBconst [d] x)) => (ADDconst [c-d] x)
 +(RSBconst [c] (ADDconst [d] x)) => (RSBconst [int32(c-d)] x)
