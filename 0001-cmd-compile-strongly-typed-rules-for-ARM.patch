@@ -1,15 +1,15 @@
-From c432a82aa531073b43e738f8984d94aca824228b Mon Sep 17 00:00:00 2001
+From 6c995699ffc5d38b4a6764c59eb28db786d91269 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 19 Apr 2020 07:01:25 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
 
 Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 192 ++++++++++-----------
- 1 file changed, 96 insertions(+), 96 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 186 ++++++++++-----------
+ 1 file changed, 93 insertions(+), 93 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..ba21d242a7 100644
+index a8cea68c5f..615caad837 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -191,7 +191,7 @@ index a8cea68c5f..ba21d242a7 100644
 +(XORshiftRA x (MOVWconst [c]) [d]) => (XORconst x [int32(c)>>uint64(d)])
 +(XORshiftRR x (MOVWconst [c]) [d]) => (XORconst x [int32(uint32(c)>>uint64(d)|uint32(c)<<uint64(32-d))])
 +(BICshiftLL x (MOVWconst [c]) [d]) => (BICconst x [int32(uint32(c)<<uint64(d))])
-+(BICshiftRL x (MOVWconst [c]) [d]) => (BICconst x [uint32(c)>>uint64(d)])
++(BICshiftRL x (MOVWconst [c]) [d]) => (BICconst x [int32(uint32(c)>>uint64(d))])
 +(BICshiftRA x (MOVWconst [c]) [d]) => (BICconst x [int32(c)>>uint64(d)])
  (MVNshiftLL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)<<uint64(d))])
  (MVNshiftRL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)>>uint64(d))])
@@ -237,16 +237,6 @@ index a8cea68c5f..ba21d242a7 100644
  
  // generic simplifications
  (ADD x (RSBconst [0] y)) -> (SUB x y)
-@@ -1554,6 +1554,6 @@
- (GE (CMPconst [0] l:(XORshiftRLreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftRLreg x y z) yes no)
- (GE (CMPconst [0] l:(XORshiftRAreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftRAreg x y z) yes no)
- 
--(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
--(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
--(MOVWload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
-+(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [read8(sym, off)])
-+(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [read16(sym, off, config.ctxt.Arch.ByteOrder)])
-+(MOVWload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int32(read32(sym, off, config.ctxt.Arch.ByteOrder))])
 -- 
 2.22.0.windows.1
 
