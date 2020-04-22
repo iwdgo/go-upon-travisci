@@ -55,4 +55,5 @@ after_success:
   - ./bin/go tool dist version
   - ./bin/go tool dist test
   - echo "***** Toolstash *****"
+  - ./bin/go tool dist install cmd/compile
   - ./bin/go build -toolexec 'toolstash -cmp' -a std
