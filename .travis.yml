@@ -27,7 +27,7 @@ before_script:
   - go env
   - echo "Toolstash"
   - go get -u golang.org/x/tools/...
-  - toolstash help || true
+  - toolstash || true
   - toolstash -v save || true
   - echo "Merge travis ci fixes"
   - cd ../..
