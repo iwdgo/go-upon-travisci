@@ -1,4 +1,4 @@
-From c250dc6f56fcf7cae93bd20ba8b907bc33a0e697 Mon Sep 17 00:00:00 2001
+From a5fb5a7755ecb9c1a4f0e51e6c726e261d7709b8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 19 Apr 2020 07:01:25 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
@@ -9,7 +9,7 @@ Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
  1 file changed, 87 insertions(+), 87 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..2e9f6b95f8 100644
+index a8cea68c5f..615fec3b04 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -72,16 +72,16 @@ index a8cea68c5f..2e9f6b95f8 100644
 +(SBCconst [c] (SUBconst [d] x) flags) => (SBCconst [c+d] x flags)
 +(RSBconst [c] (MOVWconst [d])) => (MOVWconst [c-d])
 +(RSBconst [c] (RSBconst [d] x)) => (ADDconst [c-d] x)
-+(RSBconst [c] (ADDconst [d] x)) => (RSBconst [int32(c-d)] x)
-+(RSBconst [c] (SUBconst [d] x)) => (RSBconst [int32(c+d)] x)
-+(RSCconst [c] (ADDconst [d] x) flags) => (RSCconst [int32(c-d)] x flags)
-+(RSCconst [c] (SUBconst [d] x) flags) => (RSCconst [int32(c+d)] x flags)
-+(SLLconst [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<uint64(c))])
++(RSBconst [c] (ADDconst [d] x)) => (RSBconst [c-d] x)
++(RSBconst [c] (SUBconst [d] x)) => (RSBconst [c+d] x)
++(RSCconst [c] (ADDconst [d] x) flags) => (RSCconst [c-d] x flags)
++(RSCconst [c] (SUBconst [d] x) flags) => (RSCconst [c+d] x flags)
++(SLLconst [c] (MOVWconst [d])) => (MOVWconst [uint32(d)<<uint64(c)])
 +(SRLconst [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)>>uint64(c))])
 +(SRAconst [c] (MOVWconst [d])) => (MOVWconst [int32(d)>>uint64(c)])
 +(MUL (MOVWconst [c]) (MOVWconst [d])) => (MOVWconst [c*d])
 +(MULA (MOVWconst [c]) (MOVWconst [d]) a) => (ADDconst [c*d] a)
-+(MULS (MOVWconst [c]) (MOVWconst [d]) a) => (SUBconst [int32(c*d)] a)
++(MULS (MOVWconst [c]) (MOVWconst [d]) a) => (SUBconst [c*d] a)
 +(Select0 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) => (MOVWconst [int32(uint32(c)/uint32(d))])
 +(Select1 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) => (MOVWconst [int32(uint32(c)%uint32(d))])
  (ANDconst [c] (MOVWconst [d])) -> (MOVWconst [c&d])
