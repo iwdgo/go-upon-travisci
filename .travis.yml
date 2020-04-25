@@ -54,6 +54,6 @@ after_success:
   - pwd
   - ./bin/go tool dist version
   - ./bin/go tool dist test
-  - echo "***** Toolstash *****"
+  - echo "***** Toolstash (will always succeed without a commit) *****"
   - ./bin/go tool dist install cmd/compile
   - ./bin/go build -toolexec 'toolstash -cmp' -a std
