@@ -23,12 +23,12 @@ allbash_task:
   - git log -1 --pretty=short
 
   build_script:
-  - cd ./src
   - pwd
+  - cd golang/go/src
   - sh ./make.bash
 
   test_script:
-  - cd $CIRRUS_WORKING_DIR/bin
+  - cd golang/go/bin
   - ls -al
   - export GOROOT=
   - go tool dist version
@@ -36,4 +36,4 @@ allbash_task:
 
   always:
     binaries_artifacts:
-      path: "bin/go*"
+      path: "golang/go/bin/go*"

@@ -1,0 +1,37 @@
+name: Go
+on: [push]
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.14
+      id: go
+
+    - name: Check environment
+      run: |
+        git version
+
+    - name: Clone go on tip
+      run: |
+        git clone https://github.com/golang/go.git --branch master --single-branch --no-tags
+        cd go/src
+        git log -1 --pretty=short
+
+    - name: Build
+      run: |
+        cd go/src
+        export GOROOT_BOOTSTRAP=$(go env GOROOT)
+        sh ./make.bash
+
+    - name: Test
+      run: |
+        cd go/bin
+        export GOROOT=
+        go tool dist version
+        go tool dist test
