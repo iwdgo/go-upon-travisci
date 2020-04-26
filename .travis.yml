@@ -33,7 +33,7 @@ before_script:
   - mv *.patch ./golang/go
   - cd golang/go
   - git apply -v --ignore-space-change --ignore-whitespace --whitespace=fix *.patch
-  - echo "Gen compiler rules"
+  - echo "Generate compiler rules"
   - cd src/cmd/compile/internal/ssa/gen
   - go run *.go
   - cd ../../../../../..
@@ -53,21 +53,20 @@ script:
   - cd src
   - sh ./make.bash
 
+after_success:
+  - export GOROOT=
+  - echo $GOROOT
+  - ./bin/go tool dist version
+
 after_script:
   - rm -f ./cmd/dist/dist
   - cd ..
   - pwd
   - ./bin/go env
-  # skipping tests
-  #  ./bin/go tool dist test
-  - echo "toolstash"
-  - ./bin/go tool dist install cmd/compile
-  - ./bin/go build -toolexec 'toolstash -cmp' -a std
+  # ./bin/go tool dist test
+  - echo "toolstash using the native installation"
+  - go tool dist install cmd/compile # installing the compiler
+  - go build -toolexec 'toolstash -cmp' -a std
   - echo "toolstash-check"
   - go get -u github.com/mdempsky/toolstash-check
   - toolstash-check || true
-
-after_success:
-  - export GOROOT=
-  - echo $GOROOT
-  - ./bin/go tool dist version
