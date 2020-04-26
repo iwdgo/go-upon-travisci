@@ -69,5 +69,4 @@ after_script:
   - go build -v -toolexec 'toolstash -cmp' -a std
   - echo "toolstash-check"
   - go get -u github.com/iwdgo/toolstash-check
-  - git symbolic-ref --short -q HEAD || true # detached state ?
-  - toolstash-check -v || true
+  - toolstash-check -v -repo=$(pwd) || true
