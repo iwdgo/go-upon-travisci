@@ -1,4 +1,4 @@
-From 8f5cd26df73f513aff8f9aebbf38a6a6122f23fb Mon Sep 17 00:00:00 2001
+From 9d64eff72aecf83063ef12d2fc6a3b7243f4785e Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 24 Apr 2020 07:17:33 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
@@ -9,7 +9,7 @@ Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
  1 file changed, 92 insertions(+), 92 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..7482bdc86a 100644
+index a8cea68c5f..679d376989 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -77,8 +77,8 @@ index a8cea68c5f..7482bdc86a 100644
 +(RSCconst [c] (ADDconst [d] x) flags) => (RSCconst [c-d] x flags)
 +(RSCconst [c] (SUBconst [d] x) flags) => (RSCconst [c+d] x flags)
 +(SLLconst [c] (MOVWconst [d])) => (MOVWconst [d<<uint64(c)])
-+(SRLconst [c] (MOVWconst [d])) => (MOVWconst [uint32(d)>>uint64(c)])
-+(SRAconst [c] (MOVWconst [d])) => (MOVWconst [int32(d)>>uint64(c)])
++(SRLconst [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)>>uint64(c))])
++(SRAconst [c] (MOVWconst [d])) => (MOVWconst [int32(int32(d)>>uint64(c))])
 +(MUL (MOVWconst [c]) (MOVWconst [d])) => (MOVWconst [c*d])
 +(MULA (MOVWconst [c]) (MOVWconst [d]) a) => (ADDconst [c*d] a)
 +(MULS (MOVWconst [c]) (MOVWconst [d]) a) => (SUBconst [c*d] a)
@@ -153,7 +153,7 @@ index a8cea68c5f..7482bdc86a 100644
 -(BICshiftRA x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(c)>>uint64(d))])
 -(MVNshiftLL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)<<uint64(d))])
 +(ADDshiftLL x (MOVWconst [c]) [d]) => (ADDconst x [c<<uint64(d)])
-+(ADDshiftRL x (MOVWconst [c]) [d]) => (ADDconst x [uint32(c)>>uint64(d)])
++(ADDshiftRL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)>>uint64(d))])
 +(ADDshiftRA x (MOVWconst [c]) [d]) => (ADDconst x [int32(c)>>uint64(d)])
 +(ADCshiftLL x (MOVWconst [c]) [d] flags) => (ADCconst x [c<<uint64(d)] flags)
 +(ADCshiftRL x (MOVWconst [c]) [d] flags) => (ADCconst x [int32(uint32(c)>>uint64(d))] flags)
@@ -188,7 +188,7 @@ index a8cea68c5f..7482bdc86a 100644
 +(XORshiftLL x (MOVWconst [c]) [d]) => (XORconst x [c<<uint64(d)])
 +(XORshiftRL x (MOVWconst [c]) [d]) => (XORconst x [int32(uint32(c)>>uint64(d))])
 +(XORshiftRA x (MOVWconst [c]) [d]) => (XORconst x [int32(c)>>uint64(d)])
-+(XORshiftRR x (MOVWconst [c]) [d]) => (XORconst x [int32(uint32(c)>>uint64(d)|c<<uint64(32-d))])
++(XORshiftRR x (MOVWconst [c]) [d]) => (XORconst x [int32(uint32(c)>>uint64(d)|uint32(c)<<uint64(32-d))])
 +(BICshiftLL x (MOVWconst [c]) [d]) => (BICconst x [c<<uint64(d)])
 +(BICshiftRL x (MOVWconst [c]) [d]) => (BICconst x [int32(uint32(c)>>uint64(d))])
 +(BICshiftRA x (MOVWconst [c]) [d]) => (BICconst x [int32(c)>>uint64(d)])
