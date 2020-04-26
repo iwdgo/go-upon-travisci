@@ -68,6 +68,5 @@ after_script:
   - go tool dist install -v cmd/compile # installing the compiler
   - go build -v -toolexec 'toolstash -cmp' -a std
   - echo "toolstash-check"
-  - go get -u github.com/mdempsky/toolstash-check
-  - cd src
-  - toolstash-check || true
+  - go get -u github.com/iwdgo/toolstash-check
+  - toolstash-check -v || true
