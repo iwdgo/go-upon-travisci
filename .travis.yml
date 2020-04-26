@@ -40,9 +40,7 @@ before_script:
   - go run *.go
   - cd ../../../../../..
   - echo "Commit"
-  - chmod -R 777 .git/
-  - ls -l .git/
-  - git config user.mail "constantinkonstantinidis@gmail.com"
+  - git config user.email "constantinkonstantinidis@gmail.com"
   - git config user.name "Constantin Konstantinidis"
   - cat .git/config
   - git add src/cmd/compile/internal/ssa/gen/ARM.rules
