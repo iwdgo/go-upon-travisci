@@ -27,8 +27,8 @@ before_script:
   - go env
   - echo "Toolstash"
   - go get -u golang.org/x/tools/...
-  - toolstash || true
-  - toolstash -v save || true
+  - toolstash
+  - toolstash -v save
   - echo "Apply patches"
   - cd ../..
   - pwd
@@ -41,14 +41,15 @@ before_script:
   - go run *.go
   - cd ../../../../../..
   - echo "Commit"
-  - ls -l .git/ || true
-  - cat .git/config || true
+  - chmod -R 777 .git/
+  - ls -l .git/
+  - git config user.mail "constantinkonstantinidis@gmail.com"
+  - git config user.name "Constantin Konstantinidis"
+  - cat .git/config
   - git add src/cmd/compile/internal/ssa/gen/ARM.rules
   - git add src/cmd/compile/internal/ssa/rewriteARM.go
   - git add src/make.bash
   - git status
-  - git config user.mail "constantinkonstantinidis@gmail.com"
-  - git config user.name "Constantin Konstantinidis"
   - git commit -m 'strongly typed ARM rules'
   - git log -2
 
