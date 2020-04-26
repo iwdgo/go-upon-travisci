@@ -27,7 +27,6 @@ before_script:
   - go env
   - echo "Toolstash"
   - go get -u golang.org/x/tools/...
-  - toolstash
   - toolstash -v save
   - echo "Apply patches"
   - cd ../..
