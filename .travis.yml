@@ -7,7 +7,7 @@ os: linux
 go: 1.14.x
 
 env:
-  - GO111MODULE=off
+  - GO111MODULE=auto
 
 install:
   - echo ""
@@ -29,7 +29,7 @@ before_script:
   - go get -u golang.org/x/tools/...
   - toolstash || true
   - toolstash -v save || true
-  - echo "Merge travis ci fixes"
+  - echo "Apply patches"
   - cd ../..
   - pwd
   - mv make_travisci.bash ./golang/go/src/make.bash
@@ -40,6 +40,17 @@ before_script:
   - cd src/cmd/compile/internal/ssa/gen
   - go run *.go
   - cd ../../../../../..
+  - echo "Commit"
+  - ls -l .git/ || true
+  - cat .git/config || true
+  - git add src/cmd/compile/internal/ssa/gen/ARM.rules
+  - git add src/cmd/compile/internal/ssa/rewriteARM.go
+  - git add src/make.bash
+  - git status
+  - git config user.mail "constantinkonstantinidis@gmail.com"
+  - git config user.name "Constantin Konstantinidis"
+  - git commit -m 'strongly typed ARM rules'
+  - git log -2
 
 script:
   - pwd
