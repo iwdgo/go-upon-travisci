@@ -63,10 +63,10 @@ after_script:
   - cd ..
   - pwd
   - ./bin/go env
-  # ./bin/go tool dist test
+  - ./bin/go tool dist test
   - echo "toolstash using the native installation"
   - go tool dist install -v cmd/compile # installing the compiler
   - go build -v -toolexec 'toolstash -cmp' -a std
   - echo "toolstash-check"
   - go get -u github.com/iwdgo/toolstash-check
-  - toolstash-check -v -repo=$(pwd) || true
+  - toolstash-check -v -repo=$(pwd)

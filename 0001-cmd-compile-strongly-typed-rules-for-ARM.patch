@@ -1,15 +1,15 @@
-From 9557306866a4355c24dcb850f894d852821dfcb2 Mon Sep 17 00:00:00 2001
+From d6f8d2870f7081723f64735ca9fdd1f909707bc9 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 24 Apr 2020 07:17:33 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
 
 Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 184 ++++++++++-----------
- 1 file changed, 92 insertions(+), 92 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 188 ++++++++++-----------
+ 1 file changed, 94 insertions(+), 94 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..9dd598ca34 100644
+index a8cea68c5f..832c967b02 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -61,7 +61,7 @@ index a8cea68c5f..9dd598ca34 100644
 +(ADDconst [c] (MOVWconst [d])) => (MOVWconst [c+d])
 +(ADDconst [c] (ADDconst [d] x)) => (ADDconst [c+d] x)
 +(ADDconst [c] (SUBconst [d] x)) => (ADDconst [c-d] x)
-+(ADDconst [c] (RSBconst [d] x)) => (RSBconst [int32(c+d)] x)
++(ADDconst [c] (RSBconst [d] x)) => (RSBconst [c+d] x)
 +(ADCconst [c] (ADDconst [d] x) flags) => (ADCconst [c+d] x flags)
 +(ADCconst [c] (SUBconst [d] x) flags) => (ADCconst [c-d] x flags)
 +(SUBconst [c] (MOVWconst [d])) => (MOVWconst [d-c])
@@ -87,16 +87,18 @@ index a8cea68c5f..9dd598ca34 100644
  (ANDconst [c] (MOVWconst [d])) -> (MOVWconst [c&d])
  (ANDconst [c] (ANDconst [d] x)) -> (ANDconst [c&d] x)
  (ORconst [c] (MOVWconst [d])) -> (MOVWconst [c|d])
-@@ -853,7 +853,7 @@
+@@ -853,16 +853,16 @@
  (XORconst [c] (MOVWconst [d])) -> (MOVWconst [c^d])
  (XORconst [c] (XORconst [d] x)) -> (XORconst [c^d] x)
  (BICconst [c] (MOVWconst [d])) -> (MOVWconst [d&^c])
 -(BICconst [c] (BICconst [d] x)) -> (BICconst [int64(int32(c|d))] x)
 +(BICconst [c] (BICconst [d] x)) => (BICconst [c|d] x)
  (MVN (MOVWconst [c])) -> (MOVWconst [^c])
- (MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
+-(MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
++(MOVBreg (MOVWconst [c])) => (MOVWconst [c])
  (MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
-@@ -861,8 +861,8 @@
+-(MOVHreg (MOVWconst [c])) -> (MOVWconst [int64(int16(c))])
++(MOVHreg (MOVWconst [c])) => (MOVWconst [c])
  (MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
  (MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
  // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
