@@ -1,15 +1,15 @@
-From d6f8d2870f7081723f64735ca9fdd1f909707bc9 Mon Sep 17 00:00:00 2001
+From 36ac0052a79d27eb4251470b6d5ef736916838a8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 24 Apr 2020 07:17:33 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
 
 Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 188 ++++++++++-----------
- 1 file changed, 94 insertions(+), 94 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 190 ++++++++++-----------
+ 1 file changed, 95 insertions(+), 95 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..832c967b02 100644
+index a8cea68c5f..9e783f2148 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -238,6 +238,12 @@ index a8cea68c5f..832c967b02 100644
  
  // generic simplifications
  (ADD x (RSBconst [0] y)) -> (SUB x y)
+@@ -1556,4 +1556,4 @@
+ 
+ (MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
+ (MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
+-(MOVWload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
++(MOVWload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int32(read32(sym, off, config.ctxt.Arch.ByteOrder))])
 -- 
 2.22.0.windows.1
 

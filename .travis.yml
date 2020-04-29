@@ -54,14 +54,14 @@ script:
   - sh ./make.bash
 
 after_success:
+  - rm -f ./cmd/dist/dist
+  - cd ..
+  - pwd
   - export GOROOT=
   - echo $GOROOT
   - ./bin/go tool dist version
 
 after_script:
-  - rm -f ./cmd/dist/dist
-  - cd ..
-  - pwd
   - ./bin/go env
   - ./bin/go tool dist test
   - echo "toolstash using the native installation"
