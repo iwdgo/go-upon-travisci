@@ -1,15 +1,15 @@
-From 72639ca8916b4579b7f3da5cc82a95471f455e8e Mon Sep 17 00:00:00 2001
+From 87245579d48432a91cc9ad28fd5d6fb572047a23 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 24 Apr 2020 07:17:33 +0200
 Subject: [PATCH] cmd/compile: strongly typed rules for ARM
 
 Change-Id: I80f90716477f269a227be28b14bf913b78ef375d
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 186 ++++++++++-----------
- 1 file changed, 93 insertions(+), 93 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 184 ++++++++++-----------
+ 1 file changed, 92 insertions(+), 92 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index a8cea68c5f..11dbe19f34 100644
+index a8cea68c5f..ada7e08bbe 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -812,40 +812,40 @@
@@ -87,7 +87,7 @@ index a8cea68c5f..11dbe19f34 100644
  (ANDconst [c] (MOVWconst [d])) -> (MOVWconst [c&d])
  (ANDconst [c] (ANDconst [d] x)) -> (ANDconst [c&d] x)
  (ORconst [c] (MOVWconst [d])) -> (MOVWconst [c|d])
-@@ -853,16 +853,16 @@
+@@ -853,7 +853,7 @@
  (XORconst [c] (MOVWconst [d])) -> (MOVWconst [c^d])
  (XORconst [c] (XORconst [d] x)) -> (XORconst [c^d] x)
  (BICconst [c] (MOVWconst [d])) -> (MOVWconst [d&^c])
@@ -96,8 +96,7 @@ index a8cea68c5f..11dbe19f34 100644
  (MVN (MOVWconst [c])) -> (MOVWconst [^c])
  (MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
  (MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
--(MOVHreg (MOVWconst [c])) -> (MOVWconst [int64(int16(c))])
-+(MOVHreg (MOVWconst [c])) => (MOVWconst [c])
+@@ -861,8 +861,8 @@
  (MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
  (MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
  // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
