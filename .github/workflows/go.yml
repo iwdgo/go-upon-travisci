@@ -1,4 +1,4 @@
-name: Go
+name: go-on-tip
 on: [push]
 jobs:
 
@@ -8,16 +8,12 @@ jobs:
     steps:
 
     - name: Set up Go
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v2
       with:
         go-version: 1.14
       id: go
 
-    - name: Check environment
-      run: |
-        git version
-
-    - name: Clone go on tip
+    - name: Clone master of go
       run: |
         git clone https://github.com/golang/go.git --branch master --single-branch --no-tags
         cd go/src
@@ -35,3 +31,9 @@ jobs:
         export GOROOT=
         go tool dist version
         go tool dist test
+
+    - name: Upload go executable
+      uses: actions/upload-artifact@v1
+      with:
+        name: gotip
+        path: go/bin/go
