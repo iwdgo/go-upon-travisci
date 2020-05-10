@@ -1,16 +1,16 @@
-From f708b12a739093d71b518f82c4b9ea82656acedc Mon Sep 17 00:00:00 2001
+From 285035c76e6136d5eca3c6616ed6175132e95aa7 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 08:10:47 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM - shifts -
- zero and sign extensions - float to int
+ zero and sign extensions - float to int - comparisons
 
 Change-Id: Ifc55ea1e4177c21107c521fc72da2da7b507b8ba
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 148 ++++++++++-----------
- 1 file changed, 74 insertions(+), 74 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 206 ++++++++++-----------
+ 1 file changed, 103 insertions(+), 103 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ada7e08bbe..856e277e6e 100644
+index ada7e08bbe..22929c99ea 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -43,20 +43,20 @@
@@ -222,6 +222,71 @@ index ada7e08bbe..856e277e6e 100644
  
  (Round(32|64)F ...) -> (Copy ...)
  
+@@ -213,35 +213,35 @@
+ (FMA x y z) -> (FMULAD z x y)
+ 
+ // comparisons
+-(Eq8 x y)  -> (Equal (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
+-(Eq16 x y) -> (Equal (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
+-(Eq32 x y) -> (Equal (CMP x y))
+-(EqPtr x y) -> (Equal (CMP x y))
+-(Eq(32|64)F x y) -> (Equal (CMP(F|D) x y))
+-
+-(Neq8 x y)  -> (NotEqual (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
+-(Neq16 x y) -> (NotEqual (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
+-(Neq32 x y) -> (NotEqual (CMP x y))
+-(NeqPtr x y) -> (NotEqual (CMP x y))
+-(Neq(32|64)F x y) -> (NotEqual (CMP(F|D) x y))
+-
+-(Less8 x y)  -> (LessThan (CMP (SignExt8to32 x) (SignExt8to32 y)))
+-(Less16 x y) -> (LessThan (CMP (SignExt16to32 x) (SignExt16to32 y)))
+-(Less32 x y) -> (LessThan (CMP x y))
+-(Less(32|64)F x y) -> (GreaterThan (CMP(F|D) y x)) // reverse operands to work around NaN
+-
+-(Less8U x y)  -> (LessThanU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
+-(Less16U x y) -> (LessThanU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
+-(Less32U x y) -> (LessThanU (CMP x y))
+-
+-(Leq8 x y)  -> (LessEqual (CMP (SignExt8to32 x) (SignExt8to32 y)))
+-(Leq16 x y) -> (LessEqual (CMP (SignExt16to32 x) (SignExt16to32 y)))
+-(Leq32 x y) -> (LessEqual (CMP x y))
+-(Leq(32|64)F x y) -> (GreaterEqual (CMP(F|D) y x)) // reverse operands to work around NaN
+-
+-(Leq8U x y)  -> (LessEqualU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
+-(Leq16U x y) -> (LessEqualU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
+-(Leq32U x y) -> (LessEqualU (CMP x y))
++(Eq8 x y)  => (Equal (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
++(Eq16 x y) => (Equal (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
++(Eq32 x y) => (Equal (CMP x y))
++(EqPtr x y) => (Equal (CMP x y))
++(Eq(32|64)F x y) => (Equal (CMP(F|D) x y))
++
++(Neq8 x y)  => (NotEqual (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
++(Neq16 x y) => (NotEqual (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
++(Neq32 x y) => (NotEqual (CMP x y))
++(NeqPtr x y) => (NotEqual (CMP x y))
++(Neq(32|64)F x y) => (NotEqual (CMP(F|D) x y))
++
++(Less8 x y)  => (LessThan (CMP (SignExt8to32 x) (SignExt8to32 y)))
++(Less16 x y) => (LessThan (CMP (SignExt16to32 x) (SignExt16to32 y)))
++(Less32 x y) => (LessThan (CMP x y))
++(Less(32|64)F x y) => (GreaterThan (CMP(F|D) y x)) // reverse operands to work around NaN
++
++(Less8U x y)  => (LessThanU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
++(Less16U x y) => (LessThanU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
++(Less32U x y) => (LessThanU (CMP x y))
++
++(Leq8 x y)  => (LessEqual (CMP (SignExt8to32 x) (SignExt8to32 y)))
++(Leq16 x y) => (LessEqual (CMP (SignExt16to32 x) (SignExt16to32 y)))
++(Leq32 x y) => (LessEqual (CMP x y))
++(Leq(32|64)F x y) => (GreaterEqual (CMP(F|D) y x)) // reverse operands to work around NaN
++
++(Leq8U x y)  => (LessEqualU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
++(Leq16U x y) => (LessEqualU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
++(Leq32U x y) => (LessEqualU (CMP x y))
+ 
+ (OffPtr [off] ptr:(SP)) -> (MOVWaddr [off] ptr)
+ (OffPtr [off] ptr) -> (ADDconst [off] ptr)
 -- 
 2.22.0.windows.1
 

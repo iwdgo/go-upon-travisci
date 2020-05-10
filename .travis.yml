@@ -20,12 +20,11 @@ before_script:
   - git clone --branch master --single-branch https://github.com/golang/go.git
   - cd go
   - export GOCLONE=$(pwd)
-  - echo "Toolstash"
+  - echo "toolstash install"
   - go get -u golang.org/x/tools/...
   - toolstash -v save
-  - echo "Apply patches"
-  - cd ../..
-  - pwd
+  - echo "commit patches"
+  - cd $GITROOT
   - mv make_travisci.bash $GOCLONE/src/make.bash
   - export COMMIT_TITLE=$(basename -s .patch *.patch)
   - mv *.patch $GOCLONE
@@ -35,9 +34,8 @@ before_script:
   - echo "Generate compiler rules"
   - cd src/cmd/compile/internal/ssa/gen
   - go run *.go
-  - cd ../../../../../..
-  - echo "Commit"
-  - git log -1
+  - cd $GOCLONE
+  - git log -1 # on tip
   # git has no global config on Travis CI. No '/home/travis/.gitconfig'
   - git config -l # displays local configuration
   - git config user.email "constantinkonstantinidis@gmail.com"
@@ -59,7 +57,7 @@ after_success:
 after_script:
   - ./bin/go env
   - ./bin/go tool dist test
-  - echo "toolstash using the native installation"
+  - echo "toolstash uses release version"
   - go tool dist install -v cmd/compile # installing the compiler
   - go build -v -toolexec 'toolstash -cmp' -a std
   - echo "toolstash-check"
