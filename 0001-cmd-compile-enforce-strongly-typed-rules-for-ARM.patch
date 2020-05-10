@@ -1,16 +1,18 @@
-From 74b22855c2cb29433ef0029d30b27d5676e90c00 Mon Sep 17 00:00:00 2001
+From d73d52d689a99cde240d295eba541af54ae9d42e Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 08:10:47 +0200
-Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM - shifts -
- zero and sign extensions - float to int - comparisons - load - store
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM
+
+Toolstash-check successful for shifts, zero and sign extensions,
+float to int, comparisons, load
 
 Change-Id: Ifc55ea1e4177c21107c521fc72da2da7b507b8ba
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 240 ++++++++++-----------
- 1 file changed, 120 insertions(+), 120 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 224 ++++++++++-----------
+ 1 file changed, 112 insertions(+), 112 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ada7e08bbe..d0b77d3ce5 100644
+index ada7e08bbe..1cb660bc26 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -43,20 +43,20 @@
@@ -222,7 +224,7 @@ index ada7e08bbe..d0b77d3ce5 100644
  
  (Round(32|64)F ...) -> (Copy ...)
  
-@@ -213,58 +213,58 @@
+@@ -213,51 +213,51 @@
  (FMA x y z) -> (FMULAD z x y)
  
  // comparisons
@@ -255,9 +257,6 @@ index ada7e08bbe..d0b77d3ce5 100644
 -(Leq8U x y)  -> (LessEqualU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
 -(Leq16U x y) -> (LessEqualU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
 -(Leq32U x y) -> (LessEqualU (CMP x y))
--
--(OffPtr [off] ptr:(SP)) -> (MOVWaddr [off] ptr)
--(OffPtr [off] ptr) -> (ADDconst [off] ptr)
 +(Eq8 x y)  => (Equal (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
 +(Eq16 x y) => (Equal (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
 +(Eq32 x y) => (Equal (CMP x y))
@@ -287,9 +286,9 @@ index ada7e08bbe..d0b77d3ce5 100644
 +(Leq8U x y)  => (LessEqualU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
 +(Leq16U x y) => (LessEqualU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
 +(Leq32U x y) => (LessEqualU (CMP x y))
-+
-+(OffPtr [off] ptr:(SP)) => (MOVWaddr [off] ptr)
-+(OffPtr [off] ptr) => (ADDconst [off] ptr)
+ 
+ (OffPtr [off] ptr:(SP)) -> (MOVWaddr [off] ptr)
+ (OffPtr [off] ptr) -> (ADDconst [off] ptr)
  
  (Addr ...) -> (MOVWaddr ...)
 -(LocalAddr {sym} base _) -> (MOVWaddr {sym} base)
@@ -314,19 +313,7 @@ index ada7e08bbe..d0b77d3ce5 100644
 +(Load <t> ptr mem) && is64BitFloat(t) => (MOVDload ptr mem)
  
  // stores
--(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 -> (MOVBstore ptr val mem)
--(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 -> (MOVHstore ptr val mem)
--(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) -> (MOVWstore ptr val mem)
--(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) -> (MOVFstore ptr val mem)
--(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 => (MOVBstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 => (MOVHstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) => (MOVWstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) => (MOVFstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) => (MOVDstore ptr val mem)
- 
- // zero instructions
- (Zero [0] _ mem) -> mem
+ (Store {t} ptr val mem) && t.(*types.Type).Size() == 1 -> (MOVBstore ptr val mem)
 -- 
 2.22.0.windows.1
 
