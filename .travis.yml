@@ -19,9 +19,7 @@ before_script:
   - git clone --branch master --single-branch https://github.com/golang/go.git
   - cd go
   - export GOCLONE=$(pwd)
-  - echo "Set up"
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
-  - go env
   - echo "Toolstash"
   - go get -u golang.org/x/tools/...
   - toolstash -v save
@@ -46,7 +44,7 @@ before_script:
   - git add -A
   - git status
   - echo $COMMIT_TITLE
-  - git commit -m "'$COMMIT_TITLE'"
+  - git commit -m "$COMMIT_TITLE"
   - echo "On tip"
   - git log -2
 
@@ -71,6 +69,6 @@ after_script:
   - go build -v -toolexec 'toolstash -cmp' -a std
   - echo "toolstash-check"
   - go get -u github.com/iwdgo/toolstash-check
-  - # toolstash-check -v -repo=$GOCLONE
+  - toolstash-check -v -repo=$GOCLONE
   - echo "toolstash-check -all"
   - # toolstash-check -all -repo=$(pwd)

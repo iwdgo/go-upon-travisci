@@ -1,0 +1,140 @@
+From f3353e9cbda26f34eaf14a9e0d1f702ffe78f096 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Sun, 10 May 2020 08:10:47 +0200
+Subject: [PATCH 2/2] cmd/compile: implement in shifts strongly typed rules for
+ ARM
+
+Change-Id: Ifc55ea1e4177c21107c521fc72da2da7b507b8ba
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 84 +++++++++++-----------
+ 1 file changed, 42 insertions(+), 42 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index ada7e08bbe..2d5f78da38 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -43,20 +43,20 @@
+ (Mod8u x y) -> (Mod32u (ZeroExt8to32 x) (ZeroExt8to32 y))
+ 
+ // (x + y) / 2 with x>=y -> (x - y) / 2 + y
+-(Avg32u <t> x y) -> (ADD (SRLconst <t> (SUB <t> x y) [1]) y)
++(Avg32u <t> x y) => (ADD (SRLconst <t> (SUB <t> x y) [1]) y)
+ 
+-(And(32|16|8) ...) -> (AND ...)
+-(Or(32|16|8) ...) -> (OR ...)
+-(Xor(32|16|8) ...) -> (XOR ...)
++(And(32|16|8) ...) => (AND ...)
++(Or(32|16|8) ...) => (OR ...)
++(Xor(32|16|8) ...) => (XOR ...)
+ 
+ // unary ops
+-(Neg(32|16|8) x) -> (RSBconst [0] x)
+-(Neg(32|64)F ...) -> (NEG(F|D) ...)
++(Neg(32|16|8) x) => (RSBconst [0] x)
++(Neg(32|64)F ...) => (NEG(F|D) ...)
+ 
+-(Com(32|16|8) ...) -> (MVN ...)
++(Com(32|16|8) ...) => (MVN ...)
+ 
+-(Sqrt ...) -> (SQRTD ...)
+-(Abs ...) -> (ABSD ...)
++(Sqrt ...) => (SQRTD ...)
++(Abs ...) => (ABSD ...)
+ 
+ // TODO: optimize this for ARMv5 and ARMv6
+ (Ctz32NonZero ...) -> (Ctz32 ...)
+@@ -78,7 +78,7 @@
+ (Ctz8 <t> x) && objabi.GOARM==7 -> (CLZ <t> (RBIT <typ.UInt32> (ORconst <typ.UInt32> [0x100] x)))
+ 
+ // bit length
+-(BitLen32 <t> x) -> (RSBconst [32] (CLZ <t> x))
++(BitLen32 <t> x) => (RSBconst [32] (CLZ <t> x))
+ 
+ // byte swap for ARMv5
+ // let (a, b, c, d) be the bytes of x from high to low
+@@ -98,50 +98,50 @@
+ (Bswap32 x) && objabi.GOARM>=6 -> (REV x)
+ 
+ // boolean ops -- booleans are represented with 0=false, 1=true
+-(AndB ...) -> (AND ...)
+-(OrB ...) -> (OR ...)
+-(EqB x y) -> (XORconst [1] (XOR <typ.Bool> x y))
+-(NeqB ...) -> (XOR ...)
+-(Not x) -> (XORconst [1] x)
++(AndB ...) => (AND ...)
++(OrB ...) => (OR ...)
++(EqB x y) => (XORconst [1] (XOR <typ.Bool> x y))
++(NeqB ...) => (XOR ...)
++(Not x) => (XORconst [1] x)
+ 
+ // shifts
+ // hardware instruction uses only the low byte of the shift
+ // we compare to 256 to ensure Go semantics for large shifts
+-(Lsh32x32 x y) -> (CMOVWHSconst (SLL <x.Type> x y) (CMPconst [256] y) [0])
+-(Lsh32x16 x y) -> (CMOVWHSconst (SLL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
+-(Lsh32x8  x y) -> (SLL x (ZeroExt8to32 y))
++(Lsh32x32 x y) => (CMOVWHSconst (SLL <x.Type> x y) (CMPconst [256] y) [0])
++(Lsh32x16 x y) => (CMOVWHSconst (SLL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
++(Lsh32x8  x y) => (SLL x (ZeroExt8to32 y))
+ 
+-(Lsh16x32 x y) -> (CMOVWHSconst (SLL <x.Type> x y) (CMPconst [256] y) [0])
+-(Lsh16x16 x y) -> (CMOVWHSconst (SLL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
+-(Lsh16x8  x y) -> (SLL x (ZeroExt8to32 y))
++(Lsh16x32 x y) => (CMOVWHSconst (SLL <x.Type> x y) (CMPconst [256] y) [0])
++(Lsh16x16 x y) => (CMOVWHSconst (SLL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
++(Lsh16x8  x y) => (SLL x (ZeroExt8to32 y))
+ 
+-(Lsh8x32 x y) -> (CMOVWHSconst (SLL <x.Type> x y) (CMPconst [256] y) [0])
+-(Lsh8x16 x y) -> (CMOVWHSconst (SLL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
+-(Lsh8x8  x y) -> (SLL x (ZeroExt8to32 y))
++(Lsh8x32 x y) => (CMOVWHSconst (SLL <x.Type> x y) (CMPconst [256] y) [0])
++(Lsh8x16 x y) => (CMOVWHSconst (SLL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
++(Lsh8x8  x y) => (SLL x (ZeroExt8to32 y))
+ 
+-(Rsh32Ux32 x y) -> (CMOVWHSconst (SRL <x.Type> x y) (CMPconst [256] y) [0])
+-(Rsh32Ux16 x y) -> (CMOVWHSconst (SRL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
+-(Rsh32Ux8  x y) -> (SRL x (ZeroExt8to32 y))
++(Rsh32Ux32 x y) => (CMOVWHSconst (SRL <x.Type> x y) (CMPconst [256] y) [0])
++(Rsh32Ux16 x y) => (CMOVWHSconst (SRL <x.Type> x (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
++(Rsh32Ux8  x y) => (SRL x (ZeroExt8to32 y))
+ 
+-(Rsh16Ux32 x y) -> (CMOVWHSconst (SRL <x.Type> (ZeroExt16to32 x) y) (CMPconst [256] y) [0])
+-(Rsh16Ux16 x y) -> (CMOVWHSconst (SRL <x.Type> (ZeroExt16to32 x) (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
+-(Rsh16Ux8  x y) -> (SRL (ZeroExt16to32 x) (ZeroExt8to32 y))
++(Rsh16Ux32 x y) => (CMOVWHSconst (SRL <x.Type> (ZeroExt16to32 x) y) (CMPconst [256] y) [0])
++(Rsh16Ux16 x y) => (CMOVWHSconst (SRL <x.Type> (ZeroExt16to32 x) (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
++(Rsh16Ux8  x y) => (SRL (ZeroExt16to32 x) (ZeroExt8to32 y))
+ 
+-(Rsh8Ux32 x y) -> (CMOVWHSconst (SRL <x.Type> (ZeroExt8to32 x) y) (CMPconst [256] y) [0])
+-(Rsh8Ux16 x y) -> (CMOVWHSconst (SRL <x.Type> (ZeroExt8to32 x) (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
+-(Rsh8Ux8  x y) -> (SRL (ZeroExt8to32 x) (ZeroExt8to32 y))
++(Rsh8Ux32 x y) => (CMOVWHSconst (SRL <x.Type> (ZeroExt8to32 x) y) (CMPconst [256] y) [0])
++(Rsh8Ux16 x y) => (CMOVWHSconst (SRL <x.Type> (ZeroExt8to32 x) (ZeroExt16to32 y)) (CMPconst [256] (ZeroExt16to32 y)) [0])
++(Rsh8Ux8  x y) => (SRL (ZeroExt8to32 x) (ZeroExt8to32 y))
+ 
+-(Rsh32x32 x y) -> (SRAcond x y (CMPconst [256] y))
+-(Rsh32x16 x y) -> (SRAcond x (ZeroExt16to32 y) (CMPconst [256] (ZeroExt16to32 y)))
+-(Rsh32x8  x y) -> (SRA x (ZeroExt8to32 y))
++(Rsh32x32 x y) => (SRAcond x y (CMPconst [256] y))
++(Rsh32x16 x y) => (SRAcond x (ZeroExt16to32 y) (CMPconst [256] (ZeroExt16to32 y)))
++(Rsh32x8  x y) => (SRA x (ZeroExt8to32 y))
+ 
+-(Rsh16x32 x y) -> (SRAcond (SignExt16to32 x) y (CMPconst [256] y))
+-(Rsh16x16 x y) -> (SRAcond (SignExt16to32 x) (ZeroExt16to32 y) (CMPconst [256] (ZeroExt16to32 y)))
+-(Rsh16x8  x y) -> (SRA (SignExt16to32 x) (ZeroExt8to32 y))
++(Rsh16x32 x y) => (SRAcond (SignExt16to32 x) y (CMPconst [256] y))
++(Rsh16x16 x y) => (SRAcond (SignExt16to32 x) (ZeroExt16to32 y) (CMPconst [256] (ZeroExt16to32 y)))
++(Rsh16x8  x y) => (SRA (SignExt16to32 x) (ZeroExt8to32 y))
+ 
+-(Rsh8x32 x y) -> (SRAcond (SignExt8to32 x) y (CMPconst [256] y))
+-(Rsh8x16 x y) -> (SRAcond (SignExt8to32 x) (ZeroExt16to32 y) (CMPconst [256] (ZeroExt16to32 y)))
+-(Rsh8x8  x y) -> (SRA (SignExt8to32 x) (ZeroExt8to32 y))
++(Rsh8x32 x y) => (SRAcond (SignExt8to32 x) y (CMPconst [256] y))
++(Rsh8x16 x y) => (SRAcond (SignExt8to32 x) (ZeroExt16to32 y) (CMPconst [256] (ZeroExt16to32 y)))
++(Rsh8x8  x y) => (SRA (SignExt8to32 x) (ZeroExt8to32 y))
+ 
+ // constant shifts
+ // generic opt rewrites all constant shifts to shift by Const64
+-- 
+2.22.0.windows.1
+
