@@ -10,10 +10,9 @@ env:
   - GO111MODULE=auto
 
 install:
-  - export GITROOT=$(pwd)
+  - echo $TRAVIS_BUILD_DIR
 
 before_script:
-  - echo $GITROOT
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - mkdir golang
   - cd golang
@@ -24,7 +23,7 @@ before_script:
   - go get -u golang.org/x/tools/...
   - toolstash -v save
   - echo "commit patch(es)"
-  - cd $GITROOT
+  - cd $TRAVIS_BUILD_DIR
   - mv make_travisci.bash $GOCLONE/src/make.bash
   - export COMMIT_TITLE=$(basename -s .patch *.patch)
   - mv *.patch $GOCLONE

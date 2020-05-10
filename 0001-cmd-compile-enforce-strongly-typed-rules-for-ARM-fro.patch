@@ -1,16 +1,16 @@
-From 718bde305810ddd1d2b6a15103413bf97f10b065 Mon Sep 17 00:00:00 2001
+From 49e2a4a5606bc87dc9ac890ba0ecf0748bc2cda9 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
-Subject: [PATCH] cmd/compile: enfore strongly typed rules for ARM for zeros
- and moves
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM from zeros
+ until pseudo-ops
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 36 +++++++++++-----------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 40 +++++++++++-----------
+ 1 file changed, 20 insertions(+), 20 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..7376e3921d 100644
+index 1cb660bc26..75570623ec 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -267,25 +267,25 @@
@@ -62,40 +62,37 @@ index 1cb660bc26..7376e3921d 100644
  	(LoweredZero [t.(*types.Type).Alignment()]
  		ptr
  		(ADDconst <ptr.Type> ptr [s-moveSize(t.(*types.Type).Alignment(), config)])
-@@ -307,25 +307,25 @@
+@@ -347,20 +347,20 @@
  		mem)
  
- // moves
--(Move [0] _ _ mem) -> mem
--(Move [1] dst src mem) -> (MOVBstore dst (MOVBUload src mem) mem)
--(Move [2] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
-+(Move [0] _ _ mem) => mem
-+(Move [1] dst src mem) => (MOVBstore dst (MOVBUload src mem) mem)
-+(Move [2] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 =>
- 	(MOVHstore dst (MOVHUload src mem) mem)
--(Move [2] dst src mem) ->
-+(Move [2] dst src mem) =>
- 	(MOVBstore [1] dst (MOVBUload [1] src mem)
- 		(MOVBstore dst (MOVBUload src mem) mem))
--(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%4 == 0 ->
-+(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%4 == 0 =>
- 	(MOVWstore dst (MOVWload src mem) mem)
--(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
-+(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 =>
- 	(MOVHstore [2] dst (MOVHUload [2] src mem)
- 		(MOVHstore dst (MOVHUload src mem) mem))
--(Move [4] dst src mem) ->
-+(Move [4] dst src mem) =>
- 	(MOVBstore [3] dst (MOVBUload [3] src mem)
- 		(MOVBstore [2] dst (MOVBUload [2] src mem)
- 			(MOVBstore [1] dst (MOVBUload [1] src mem)
- 				(MOVBstore dst (MOVBUload src mem) mem))))
+ // calls
+-(StaticCall ...) -> (CALLstatic ...)
+-(ClosureCall ...) -> (CALLclosure ...)
+-(InterCall ...) -> (CALLinter ...)
++(StaticCall ...) => (CALLstatic ...)
++(ClosureCall ...) => (CALLclosure ...)
++(InterCall ...) => (CALLinter ...)
  
--(Move [3] dst src mem) ->
-+(Move [3] dst src mem) =>
- 	(MOVBstore [2] dst (MOVBUload [2] src mem)
- 		(MOVBstore [1] dst (MOVBUload [1] src mem)
- 			(MOVBstore dst (MOVBUload src mem) mem)))
+ // checks
+-(NilCheck ...) -> (LoweredNilCheck ...)
+-(IsNonNil ptr) -> (NotEqual (CMPconst [0] ptr))
+-(IsInBounds idx len) -> (LessThanU (CMP idx len))
+-(IsSliceInBounds idx len) -> (LessEqualU (CMP idx len))
++(NilCheck ...) => (LoweredNilCheck ...)
++(IsNonNil ptr) => (NotEqual (CMPconst [0] ptr))
++(IsInBounds idx len) => (LessThanU (CMP idx len))
++(IsSliceInBounds idx len) => (LessEqualU (CMP idx len))
+ 
+ // pseudo-ops
+-(GetClosurePtr ...) -> (LoweredGetClosurePtr ...)
+-(GetCallerSP ...) -> (LoweredGetCallerSP ...)
+-(GetCallerPC ...) -> (LoweredGetCallerPC ...)
++(GetClosurePtr ...) => (LoweredGetClosurePtr ...)
++(GetCallerSP ...) => (LoweredGetCallerSP ...)
++(GetCallerPC ...) => (LoweredGetCallerPC ...)
+ 
+ // Absorb pseudo-ops into blocks.
+ (If (Equal cc) yes no) -> (EQ cc yes no)
 -- 
 2.22.0.windows.1
 
