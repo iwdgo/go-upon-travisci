@@ -23,7 +23,7 @@ before_script:
   - echo "toolstash install"
   - go get -u golang.org/x/tools/...
   - toolstash -v save
-  - echo "commit patches"
+  - echo "commit patch(es)"
   - cd $GITROOT
   - mv make_travisci.bash $GOCLONE/src/make.bash
   - export COMMIT_TITLE=$(basename -s .patch *.patch)
@@ -44,8 +44,7 @@ before_script:
   - git commit -m "$COMMIT_TITLE"
 
 script:
-  - pwd
-  - cd src
+  - cd $GOCLONE/src
   - sh ./make.bash
 
 after_success:
@@ -64,4 +63,4 @@ after_script:
   - go get -u github.com/iwdgo/toolstash-check
   - toolstash-check -v -repo=$GOCLONE
   - echo "toolstash-check -all"
-  - # toolstash-check -all -repo=$(pwd)
+  - toolstash-check -all -repo=$GOCLONE
