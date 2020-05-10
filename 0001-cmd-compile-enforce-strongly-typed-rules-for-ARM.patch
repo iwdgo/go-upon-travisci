@@ -1,16 +1,16 @@
-From 285035c76e6136d5eca3c6616ed6175132e95aa7 Mon Sep 17 00:00:00 2001
+From 74b22855c2cb29433ef0029d30b27d5676e90c00 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 08:10:47 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM - shifts -
- zero and sign extensions - float to int - comparisons
+ zero and sign extensions - float to int - comparisons - load - store
 
 Change-Id: Ifc55ea1e4177c21107c521fc72da2da7b507b8ba
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 206 ++++++++++-----------
- 1 file changed, 103 insertions(+), 103 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 240 ++++++++++-----------
+ 1 file changed, 120 insertions(+), 120 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ada7e08bbe..22929c99ea 100644
+index ada7e08bbe..d0b77d3ce5 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -43,20 +43,20 @@
@@ -222,7 +222,7 @@ index ada7e08bbe..22929c99ea 100644
  
  (Round(32|64)F ...) -> (Copy ...)
  
-@@ -213,35 +213,35 @@
+@@ -213,58 +213,58 @@
  (FMA x y z) -> (FMULAD z x y)
  
  // comparisons
@@ -255,6 +255,9 @@ index ada7e08bbe..22929c99ea 100644
 -(Leq8U x y)  -> (LessEqualU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
 -(Leq16U x y) -> (LessEqualU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
 -(Leq32U x y) -> (LessEqualU (CMP x y))
+-
+-(OffPtr [off] ptr:(SP)) -> (MOVWaddr [off] ptr)
+-(OffPtr [off] ptr) -> (ADDconst [off] ptr)
 +(Eq8 x y)  => (Equal (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
 +(Eq16 x y) => (Equal (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
 +(Eq32 x y) => (Equal (CMP x y))
@@ -284,9 +287,46 @@ index ada7e08bbe..22929c99ea 100644
 +(Leq8U x y)  => (LessEqualU (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
 +(Leq16U x y) => (LessEqualU (CMP (ZeroExt16to32 x) (ZeroExt16to32 y)))
 +(Leq32U x y) => (LessEqualU (CMP x y))
++
++(OffPtr [off] ptr:(SP)) => (MOVWaddr [off] ptr)
++(OffPtr [off] ptr) => (ADDconst [off] ptr)
  
- (OffPtr [off] ptr:(SP)) -> (MOVWaddr [off] ptr)
- (OffPtr [off] ptr) -> (ADDconst [off] ptr)
+ (Addr ...) -> (MOVWaddr ...)
+-(LocalAddr {sym} base _) -> (MOVWaddr {sym} base)
++(LocalAddr {sym} base _) => (MOVWaddr {sym} base)
+ 
+ // loads
+-(Load <t> ptr mem) && t.IsBoolean() -> (MOVBUload ptr mem)
+-(Load <t> ptr mem) && (is8BitInt(t) && isSigned(t)) -> (MOVBload ptr mem)
+-(Load <t> ptr mem) && (is8BitInt(t) && !isSigned(t)) -> (MOVBUload ptr mem)
+-(Load <t> ptr mem) && (is16BitInt(t) && isSigned(t)) -> (MOVHload ptr mem)
+-(Load <t> ptr mem) && (is16BitInt(t) && !isSigned(t)) -> (MOVHUload ptr mem)
+-(Load <t> ptr mem) && (is32BitInt(t) || isPtr(t)) -> (MOVWload ptr mem)
+-(Load <t> ptr mem) && is32BitFloat(t) -> (MOVFload ptr mem)
+-(Load <t> ptr mem) && is64BitFloat(t) -> (MOVDload ptr mem)
++(Load <t> ptr mem) && t.IsBoolean() => (MOVBUload ptr mem)
++(Load <t> ptr mem) && (is8BitInt(t) && isSigned(t)) => (MOVBload ptr mem)
++(Load <t> ptr mem) && (is8BitInt(t) && !isSigned(t)) => (MOVBUload ptr mem)
++(Load <t> ptr mem) && (is16BitInt(t) && isSigned(t)) => (MOVHload ptr mem)
++(Load <t> ptr mem) && (is16BitInt(t) && !isSigned(t)) => (MOVHUload ptr mem)
++(Load <t> ptr mem) && (is32BitInt(t) || isPtr(t)) => (MOVWload ptr mem)
++(Load <t> ptr mem) && is32BitFloat(t) => (MOVFload ptr mem)
++(Load <t> ptr mem) && is64BitFloat(t) => (MOVDload ptr mem)
+ 
+ // stores
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 -> (MOVBstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 -> (MOVHstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) -> (MOVWstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) -> (MOVFstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 => (MOVBstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 => (MOVHstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) => (MOVWstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) => (MOVFstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) => (MOVDstore ptr val mem)
+ 
+ // zero instructions
+ (Zero [0] _ mem) -> mem
 -- 
 2.22.0.windows.1
 
