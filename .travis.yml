@@ -14,12 +14,12 @@ install:
 
 before_script:
   - echo $GITROOT
+  - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - mkdir golang
   - cd golang
   - git clone --branch master --single-branch https://github.com/golang/go.git
   - cd go
   - export GOCLONE=$(pwd)
-  - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - echo "Toolstash"
   - go get -u golang.org/x/tools/...
   - toolstash -v save
@@ -37,16 +37,13 @@ before_script:
   - go run *.go
   - cd ../../../../../..
   - echo "Commit"
+  - git log -1
   # git has no global config on Travis CI. No '/home/travis/.gitconfig'
   - git config -l # displays local configuration
   - git config user.email "constantinkonstantinidis@gmail.com"
   - git config user.name "Constantin Konstantinidis"
   - git add -A
-  - git status
-  - echo $COMMIT_TITLE
   - git commit -m "$COMMIT_TITLE"
-  - echo "On tip"
-  - git log -2
 
 script:
   - pwd
@@ -55,10 +52,8 @@ script:
 
 after_success:
   - rm -f ./cmd/dist/dist
-  - cd ..
-  - pwd
-  - export GOROOT=
-  - echo $GOROOT
+  - cd $GOCLONE
+  - export GOROOT= # get intermediate commit of go
   - ./bin/go tool dist version
 
 after_script:
