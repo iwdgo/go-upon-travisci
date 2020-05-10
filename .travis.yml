@@ -10,10 +10,10 @@ env:
   - GO111MODULE=auto
 
 install:
-  - echo ""
+  - export GITROOT=$(pwd)
 
 before_script:
-  - echo "Cloning"
+  - echo $GITROOT
   - mkdir golang
   - cd golang
   - git clone --branch master --single-branch https://github.com/golang/go.git
@@ -28,8 +28,8 @@ before_script:
   - pwd
   - mv make_travisci.bash $GOCLONE/src/make.bash
   - export COMMIT_TITLE=$(basename -s .patch *.patch)
-  - mv *.patch ./golang/go
-  - cd golang/go
+  - mv *.patch $GOCLONE
+  - cd $GOCLONE
   - git apply -v --ignore-space-change --ignore-whitespace --whitespace=fix *.patch
   - rm *.patch
   - echo "Generate compiler rules"
