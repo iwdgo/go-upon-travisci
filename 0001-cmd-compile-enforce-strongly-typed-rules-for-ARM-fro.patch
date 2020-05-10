@@ -1,4 +1,4 @@
-From 49e2a4a5606bc87dc9ac890ba0ecf0748bc2cda9 Mon Sep 17 00:00:00 2001
+From fc0361910c1af9c4c9e983ad3c9c9528ad750244 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM from zeros
@@ -6,33 +6,24 @@ Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM from zeros
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 40 +++++++++++-----------
- 1 file changed, 20 insertions(+), 20 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 36 +++++++++++-----------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..75570623ec 100644
+index 1cb660bc26..4faed3db7f 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -267,25 +267,25 @@
- (Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
- 
- // zero instructions
--(Zero [0] _ mem) -> mem
--(Zero [1] ptr mem) -> (MOVBstore ptr (MOVWconst [0]) mem)
--(Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
-+(Zero [0] _ mem) => mem
-+(Zero [1] ptr mem) => (MOVBstore ptr (MOVWconst [0]) mem)
-+(Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 =>
+@@ -271,7 +271,7 @@
+ (Zero [1] ptr mem) -> (MOVBstore ptr (MOVWconst [0]) mem)
+ (Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
  	(MOVHstore ptr (MOVWconst [0]) mem)
 -(Zero [2] ptr mem) ->
 +(Zero [2] ptr mem) =>
  	(MOVBstore [1] ptr (MOVWconst [0])
  		(MOVBstore [0] ptr (MOVWconst [0]) mem))
--(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 ->
-+(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 =>
- 	(MOVWstore ptr (MOVWconst [0]) mem)
--(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
-+(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ (Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 ->
+@@ -279,13 +279,13 @@
+ (Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
  	(MOVHstore [2] ptr (MOVWconst [0])
  		(MOVHstore [0] ptr (MOVWconst [0]) mem))
 -(Zero [4] ptr mem) ->
@@ -47,21 +38,37 @@ index 1cb660bc26..75570623ec 100644
  	(MOVBstore [2] ptr (MOVWconst [0])
  		(MOVBstore [1] ptr (MOVWconst [0])
  			(MOVBstore [0] ptr (MOVWconst [0]) mem)))
-@@ -294,12 +294,12 @@
- // 4 and 128 are magic constants, see runtime/mkduff.go
- (Zero [s] {t} ptr mem)
- 	&& s%4 == 0 && s > 4 && s <= 512
--	&& t.(*types.Type).Alignment()%4 == 0 && !config.noDuffDevice ->
-+	&& t.(*types.Type).Alignment()%4 == 0 && !config.noDuffDevice =>
- 	(DUFFZERO [4 * (128 - s/4)] ptr (MOVWconst [0]) mem)
+@@ -307,11 +307,11 @@
+ 		mem)
  
- // Large zeroing uses a loop
- (Zero [s] {t} ptr mem)
--	&& (s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0 ->
-+	&& (s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0 =>
- 	(LoweredZero [t.(*types.Type).Alignment()]
- 		ptr
- 		(ADDconst <ptr.Type> ptr [s-moveSize(t.(*types.Type).Alignment(), config)])
+ // moves
+-(Move [0] _ _ mem) -> mem
+-(Move [1] dst src mem) -> (MOVBstore dst (MOVBUload src mem) mem)
++(Move [0] _ _ mem) => mem
++(Move [1] dst src mem) => (MOVBstore dst (MOVBUload src mem) mem)
+ (Move [2] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
+ 	(MOVHstore dst (MOVHUload src mem) mem)
+-(Move [2] dst src mem) ->
++(Move [2] dst src mem) =>
+ 	(MOVBstore [1] dst (MOVBUload [1] src mem)
+ 		(MOVBstore dst (MOVBUload src mem) mem))
+ (Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%4 == 0 ->
+@@ -319,13 +319,13 @@
+ (Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
+ 	(MOVHstore [2] dst (MOVHUload [2] src mem)
+ 		(MOVHstore dst (MOVHUload src mem) mem))
+-(Move [4] dst src mem) ->
++(Move [4] dst src mem) =>
+ 	(MOVBstore [3] dst (MOVBUload [3] src mem)
+ 		(MOVBstore [2] dst (MOVBUload [2] src mem)
+ 			(MOVBstore [1] dst (MOVBUload [1] src mem)
+ 				(MOVBstore dst (MOVBUload src mem) mem))))
+ 
+-(Move [3] dst src mem) ->
++(Move [3] dst src mem) =>
+ 	(MOVBstore [2] dst (MOVBUload [2] src mem)
+ 		(MOVBstore [1] dst (MOVBUload [1] src mem)
+ 			(MOVBstore dst (MOVBUload src mem) mem)))
 @@ -347,20 +347,20 @@
  		mem)
  
