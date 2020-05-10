@@ -1,0 +1,101 @@
+From 718bde305810ddd1d2b6a15103413bf97f10b065 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Sun, 10 May 2020 21:55:55 +0200
+Subject: [PATCH] cmd/compile: enfore strongly typed rules for ARM for zeros
+ and moves
+
+Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 36 +++++++++++-----------
+ 1 file changed, 18 insertions(+), 18 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index 1cb660bc26..7376e3921d 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -267,25 +267,25 @@
+ (Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
+ 
+ // zero instructions
+-(Zero [0] _ mem) -> mem
+-(Zero [1] ptr mem) -> (MOVBstore ptr (MOVWconst [0]) mem)
+-(Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
++(Zero [0] _ mem) => mem
++(Zero [1] ptr mem) => (MOVBstore ptr (MOVWconst [0]) mem)
++(Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ 	(MOVHstore ptr (MOVWconst [0]) mem)
+-(Zero [2] ptr mem) ->
++(Zero [2] ptr mem) =>
+ 	(MOVBstore [1] ptr (MOVWconst [0])
+ 		(MOVBstore [0] ptr (MOVWconst [0]) mem))
+-(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 ->
++(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 =>
+ 	(MOVWstore ptr (MOVWconst [0]) mem)
+-(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
++(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ 	(MOVHstore [2] ptr (MOVWconst [0])
+ 		(MOVHstore [0] ptr (MOVWconst [0]) mem))
+-(Zero [4] ptr mem) ->
++(Zero [4] ptr mem) =>
+ 	(MOVBstore [3] ptr (MOVWconst [0])
+ 		(MOVBstore [2] ptr (MOVWconst [0])
+ 			(MOVBstore [1] ptr (MOVWconst [0])
+ 				(MOVBstore [0] ptr (MOVWconst [0]) mem))))
+ 
+-(Zero [3] ptr mem) ->
++(Zero [3] ptr mem) =>
+ 	(MOVBstore [2] ptr (MOVWconst [0])
+ 		(MOVBstore [1] ptr (MOVWconst [0])
+ 			(MOVBstore [0] ptr (MOVWconst [0]) mem)))
+@@ -294,12 +294,12 @@
+ // 4 and 128 are magic constants, see runtime/mkduff.go
+ (Zero [s] {t} ptr mem)
+ 	&& s%4 == 0 && s > 4 && s <= 512
+-	&& t.(*types.Type).Alignment()%4 == 0 && !config.noDuffDevice ->
++	&& t.(*types.Type).Alignment()%4 == 0 && !config.noDuffDevice =>
+ 	(DUFFZERO [4 * (128 - s/4)] ptr (MOVWconst [0]) mem)
+ 
+ // Large zeroing uses a loop
+ (Zero [s] {t} ptr mem)
+-	&& (s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0 ->
++	&& (s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0 =>
+ 	(LoweredZero [t.(*types.Type).Alignment()]
+ 		ptr
+ 		(ADDconst <ptr.Type> ptr [s-moveSize(t.(*types.Type).Alignment(), config)])
+@@ -307,25 +307,25 @@
+ 		mem)
+ 
+ // moves
+-(Move [0] _ _ mem) -> mem
+-(Move [1] dst src mem) -> (MOVBstore dst (MOVBUload src mem) mem)
+-(Move [2] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
++(Move [0] _ _ mem) => mem
++(Move [1] dst src mem) => (MOVBstore dst (MOVBUload src mem) mem)
++(Move [2] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ 	(MOVHstore dst (MOVHUload src mem) mem)
+-(Move [2] dst src mem) ->
++(Move [2] dst src mem) =>
+ 	(MOVBstore [1] dst (MOVBUload [1] src mem)
+ 		(MOVBstore dst (MOVBUload src mem) mem))
+-(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%4 == 0 ->
++(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%4 == 0 =>
+ 	(MOVWstore dst (MOVWload src mem) mem)
+-(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
++(Move [4] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ 	(MOVHstore [2] dst (MOVHUload [2] src mem)
+ 		(MOVHstore dst (MOVHUload src mem) mem))
+-(Move [4] dst src mem) ->
++(Move [4] dst src mem) =>
+ 	(MOVBstore [3] dst (MOVBUload [3] src mem)
+ 		(MOVBstore [2] dst (MOVBUload [2] src mem)
+ 			(MOVBstore [1] dst (MOVBUload [1] src mem)
+ 				(MOVBstore dst (MOVBUload src mem) mem))))
+ 
+-(Move [3] dst src mem) ->
++(Move [3] dst src mem) =>
+ 	(MOVBstore [2] dst (MOVBUload [2] src mem)
+ 		(MOVBstore [1] dst (MOVBUload [1] src mem)
+ 			(MOVBstore dst (MOVBUload src mem) mem)))
+-- 
+2.22.0.windows.1
+
