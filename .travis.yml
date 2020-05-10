@@ -17,8 +17,8 @@ before_script:
   - mkdir golang
   - cd golang
   - git clone --branch master --single-branch https://github.com/golang/go.git
-  - pwd
   - cd go
+  - export GOCLONE=$(pwd)
   - echo "Set up"
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - go env
@@ -28,8 +28,10 @@ before_script:
   - echo "Apply patches"
   - cd ../..
   - pwd
+  - cd $GOCLONE
+  - pwd
   - mv make_travisci.bash ./golang/go/src/make.bash
-  - export COMMITTITLE=$(basename -s .patch *.patch)
+  - export COMMIT_TITLE=$(basename -s .patch *.patch)
   - mv *.patch ./golang/go
   - cd golang/go
   - git apply -v --ignore-space-change --ignore-whitespace --whitespace=fix *.patch
@@ -45,7 +47,8 @@ before_script:
   - git config user.name "Constantin Konstantinidis"
   - git add -A
   - git status
-  - git commit -m $(COMMITTITLE)
+  - echo $COMMIT_TITLE
+  - git commit -m $(echo $COMMIT_TITLE)
   - echo "On tip"
   - git log -2
 
