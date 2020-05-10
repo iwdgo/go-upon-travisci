@@ -16,7 +16,6 @@ before_script:
   - echo "Cloning"
   - mkdir golang
   - cd golang
-  - git version
   - git clone --branch master --single-branch https://github.com/golang/go.git
   - pwd
   - cd go
@@ -40,7 +39,7 @@ before_script:
   - go run *.go
   - cd ../../../../../..
   - echo "Commit"
-  - git config --global -l
+  - # git config --global -l # '/home/travis/.gitconfig': No such file or directory
   - git config --local -l
   - git config -l
   - git config user.email "constantinkonstantinidis@gmail.com"
