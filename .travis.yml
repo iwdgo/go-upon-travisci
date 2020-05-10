@@ -39,14 +39,13 @@ before_script:
   - go run *.go
   - cd ../../../../../..
   - echo "Commit"
-  - # git config --global -l # '/home/travis/.gitconfig': No such file or directory
-  - git config --local -l
-  - git config -l
+  - # git has no global config on Travis CI. No '/home/travis/.gitconfig'
+  - git config -l # displays local configuration
   - git config user.email "constantinkonstantinidis@gmail.com"
   - git config user.name "Constantin Konstantinidis"
   - git add -A
   - git status
-  - git commit -m $COMMITTITLE
+  - git commit -m $(COMMITTITLE)
   - echo "On tip"
   - git log -2
 
