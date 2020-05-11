@@ -1,17 +1,17 @@
-From 6751e929b411a0ffc7069b5686ed908ecd6e65b0 Mon Sep 17 00:00:00 2001
+From 721012017c9f235e458fd89baa641a852f9cfa6a Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (3)
 
-From absorbed tests until "fold into load/store"
+From absorbed tests until "replace load from location..."
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 148 ++++++++++-----------
- 1 file changed, 74 insertions(+), 74 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 154 ++++++++++-----------
+ 1 file changed, 77 insertions(+), 77 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..c108a9c76a 100644
+index 1cb660bc26..2ad8a746d5 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -271,7 +271,7 @@
@@ -227,6 +227,29 @@ index 1cb660bc26..c108a9c76a 100644
  
  (MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
  	(MOVBload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+@@ -459,7 +459,7 @@
+ 	(MOVDstore [off1+off2] {mergeSym(sym1,sym2)} ptr val mem)
+ 
+ // replace load from same location as preceding store with zero/sign extension (or copy in case of full width)
+-(MOVBload [off] {sym} ptr (MOVBstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) -> (MOVBreg x)
++(MOVBload [off] {sym} ptr (MOVBstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) => (MOVBreg x)
+ (MOVBUload [off] {sym} ptr (MOVBstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) -> (MOVBUreg x)
+ (MOVHload [off] {sym} ptr (MOVHstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) -> (MOVHreg x)
+ (MOVHUload [off] {sym} ptr (MOVHstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) -> (MOVHUreg x)
+@@ -468,11 +468,11 @@
+ (MOVFload [off] {sym} ptr (MOVFstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) -> x
+ (MOVDload [off] {sym} ptr (MOVDstore [off2] {sym2} ptr2 x _)) && sym == sym2 && off == off2 && isSamePtr(ptr, ptr2) -> x
+ 
+-(MOVWloadidx ptr idx (MOVWstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) -> x
++(MOVWloadidx ptr idx (MOVWstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) => x
+ (MOVWloadshiftLL ptr idx [c] (MOVWstoreshiftLL ptr2 idx [d] x _)) && c==d && isSamePtr(ptr, ptr2) -> x
+ (MOVWloadshiftRL ptr idx [c] (MOVWstoreshiftRL ptr2 idx [d] x _)) && c==d && isSamePtr(ptr, ptr2) -> x
+ (MOVWloadshiftRA ptr idx [c] (MOVWstoreshiftRA ptr2 idx [d] x _)) && c==d && isSamePtr(ptr, ptr2) -> x
+-(MOVBUloadidx ptr idx (MOVBstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) -> (MOVBUreg x)
++(MOVBUloadidx ptr idx (MOVBstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) => (MOVBUreg x)
+ (MOVBloadidx ptr idx (MOVBstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) -> (MOVBreg x)
+ (MOVHUloadidx ptr idx (MOVHstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) -> (MOVHUreg x)
+ (MOVHloadidx ptr idx (MOVHstoreidx ptr2 idx x _)) && isSamePtr(ptr, ptr2) -> (MOVHreg x)
 -- 
 2.22.0.windows.1
 
