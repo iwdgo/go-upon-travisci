@@ -1,4 +1,4 @@
-From ef01588bd03af772a019e0cf7b71d635c4bb271d Mon Sep 17 00:00:00 2001
+From 6751e929b411a0ffc7069b5686ed908ecd6e65b0 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (3)
@@ -7,11 +7,11 @@ From absorbed tests until "fold into load/store"
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 152 ++++++++++-----------
- 1 file changed, 76 insertions(+), 76 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 148 ++++++++++-----------
+ 1 file changed, 74 insertions(+), 74 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..059535b04c 100644
+index 1cb660bc26..c108a9c76a 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -271,7 +271,7 @@
@@ -70,7 +70,7 @@ index 1cb660bc26..059535b04c 100644
  	(MOVBstore [2] dst (MOVBUload [2] src mem)
  		(MOVBstore [1] dst (MOVBUload [1] src mem)
  			(MOVBstore dst (MOVBUload src mem) mem)))
-@@ -347,92 +347,92 @@
+@@ -347,90 +347,90 @@
  		mem)
  
  // calls
@@ -199,8 +199,6 @@ index 1cb660bc26..059535b04c 100644
 -(MOVFstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVFstore [off1-off2] {sym} ptr val mem)
 -(MOVDstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVDstore [off1+off2] {sym} ptr val mem)
 -(MOVDstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVDstore [off1-off2] {sym} ptr val mem)
--
--(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
 +(MOVBload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVBload [off1+off2] {sym} ptr mem)
 +(MOVBload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVBload [off1-off2] {sym} ptr mem)
 +(MOVBUload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVBUload [off1+off2] {sym} ptr mem)
@@ -226,11 +224,9 @@ index 1cb660bc26..059535b04c 100644
 +(MOVFstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVFstore [off1-off2] {sym} ptr val mem)
 +(MOVDstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVDstore [off1+off2] {sym} ptr val mem)
 +(MOVDstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVDstore [off1-off2] {sym} ptr val mem)
-+
-+(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 
+ (MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
  	(MOVBload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
- (MOVBUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
- 	(MOVBUload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
 -- 
 2.22.0.windows.1
 
