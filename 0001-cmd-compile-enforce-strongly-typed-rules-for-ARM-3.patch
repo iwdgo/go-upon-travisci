@@ -1,17 +1,17 @@
-From efec9679ffef49ec1180c06df6d5c4a5a1023f0f Mon Sep 17 00:00:00 2001
+From ef01588bd03af772a019e0cf7b71d635c4bb271d Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (3)
 
-From absorbed tests until "fold offset into address"
+From absorbed tests until "fold into load/store"
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 98 +++++++++++-----------
- 1 file changed, 49 insertions(+), 49 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 152 ++++++++++-----------
+ 1 file changed, 76 insertions(+), 76 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..e918cd3537 100644
+index 1cb660bc26..059535b04c 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -271,7 +271,7 @@
@@ -70,7 +70,7 @@ index 1cb660bc26..e918cd3537 100644
  	(MOVBstore [2] dst (MOVBUload [2] src mem)
  		(MOVBstore [1] dst (MOVBUload [1] src mem)
  			(MOVBstore dst (MOVBUload src mem) mem)))
-@@ -347,63 +347,63 @@
+@@ -347,92 +347,92 @@
  		mem)
  
  // calls
@@ -174,7 +174,63 @@ index 1cb660bc26..e918cd3537 100644
 +(SUBconst [off1] (MOVWaddr [off2] {sym} ptr)) => (MOVWaddr [off2-off1] {sym} ptr)
  
  // fold address into load/store
- (MOVBload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVBload [off1+off2] {sym} ptr mem)
+-(MOVBload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVBload [off1+off2] {sym} ptr mem)
+-(MOVBload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVBload [off1-off2] {sym} ptr mem)
+-(MOVBUload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVBUload [off1+off2] {sym} ptr mem)
+-(MOVBUload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVBUload [off1-off2] {sym} ptr mem)
+-(MOVHload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVHload [off1+off2] {sym} ptr mem)
+-(MOVHload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVHload [off1-off2] {sym} ptr mem)
+-(MOVHUload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVHUload [off1+off2] {sym} ptr mem)
+-(MOVHUload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVHUload [off1-off2] {sym} ptr mem)
+-(MOVWload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVWload [off1+off2] {sym} ptr mem)
+-(MOVWload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVWload [off1-off2] {sym} ptr mem)
+-(MOVFload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVFload [off1+off2] {sym} ptr mem)
+-(MOVFload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVFload [off1-off2] {sym} ptr mem)
+-(MOVDload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVDload [off1+off2] {sym} ptr mem)
+-(MOVDload [off1] {sym} (SUBconst [off2] ptr) mem) -> (MOVDload [off1-off2] {sym} ptr mem)
+-
+-(MOVBstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVBstore [off1+off2] {sym} ptr val mem)
+-(MOVBstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVBstore [off1-off2] {sym} ptr val mem)
+-(MOVHstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVHstore [off1+off2] {sym} ptr val mem)
+-(MOVHstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVHstore [off1-off2] {sym} ptr val mem)
+-(MOVWstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVWstore [off1+off2] {sym} ptr val mem)
+-(MOVWstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVWstore [off1-off2] {sym} ptr val mem)
+-(MOVFstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVFstore [off1+off2] {sym} ptr val mem)
+-(MOVFstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVFstore [off1-off2] {sym} ptr val mem)
+-(MOVDstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVDstore [off1+off2] {sym} ptr val mem)
+-(MOVDstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVDstore [off1-off2] {sym} ptr val mem)
+-
+-(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVBload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVBload [off1+off2] {sym} ptr mem)
++(MOVBload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVBload [off1-off2] {sym} ptr mem)
++(MOVBUload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVBUload [off1+off2] {sym} ptr mem)
++(MOVBUload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVBUload [off1-off2] {sym} ptr mem)
++(MOVHload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVHload [off1+off2] {sym} ptr mem)
++(MOVHload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVHload [off1-off2] {sym} ptr mem)
++(MOVHUload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVHUload [off1+off2] {sym} ptr mem)
++(MOVHUload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVHUload [off1-off2] {sym} ptr mem)
++(MOVWload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVWload [off1+off2] {sym} ptr mem)
++(MOVWload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVWload [off1-off2] {sym} ptr mem)
++(MOVFload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVFload [off1+off2] {sym} ptr mem)
++(MOVFload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVFload [off1-off2] {sym} ptr mem)
++(MOVDload [off1] {sym} (ADDconst [off2] ptr) mem) => (MOVDload [off1+off2] {sym} ptr mem)
++(MOVDload [off1] {sym} (SUBconst [off2] ptr) mem) => (MOVDload [off1-off2] {sym} ptr mem)
++
++(MOVBstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVBstore [off1+off2] {sym} ptr val mem)
++(MOVBstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVBstore [off1-off2] {sym} ptr val mem)
++(MOVHstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVHstore [off1+off2] {sym} ptr val mem)
++(MOVHstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVHstore [off1-off2] {sym} ptr val mem)
++(MOVWstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVWstore [off1+off2] {sym} ptr val mem)
++(MOVWstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVWstore [off1-off2] {sym} ptr val mem)
++(MOVFstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVFstore [off1+off2] {sym} ptr val mem)
++(MOVFstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVFstore [off1-off2] {sym} ptr val mem)
++(MOVDstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVDstore [off1+off2] {sym} ptr val mem)
++(MOVDstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVDstore [off1-off2] {sym} ptr val mem)
++
++(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVBload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+ (MOVBUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
+ 	(MOVBUload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
 -- 
 2.22.0.windows.1
 
