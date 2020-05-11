@@ -1,17 +1,17 @@
-From 25b4500994acb9a5737446402c2a4d3b622d2de0 Mon Sep 17 00:00:00 2001
+From efec9679ffef49ec1180c06df6d5c4a5a1023f0f Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (3)
 
-From absorbed tests until ...
+From absorbed tests until "fold offset into address"
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 82 +++++++++++-----------
- 1 file changed, 41 insertions(+), 41 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 98 +++++++++++-----------
+ 1 file changed, 49 insertions(+), 49 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..de1671c8ab 100644
+index 1cb660bc26..e918cd3537 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -271,7 +271,7 @@
@@ -70,7 +70,7 @@ index 1cb660bc26..de1671c8ab 100644
  	(MOVBstore [2] dst (MOVBUload [2] src mem)
  		(MOVBstore [1] dst (MOVBUload [1] src mem)
  			(MOVBstore dst (MOVBUload src mem) mem)))
-@@ -347,49 +347,49 @@
+@@ -347,63 +347,63 @@
  		mem)
  
  // calls
@@ -151,8 +151,30 @@ index 1cb660bc26..de1671c8ab 100644
 -(WB ...) -> (LoweredWB ...)
 +(WB ...) => (LoweredWB ...)
  
- (PanicBounds [kind] x y mem) && boundsABI(kind) == 0 -> (LoweredPanicBoundsA [kind] x y mem)
- (PanicBounds [kind] x y mem) && boundsABI(kind) == 1 -> (LoweredPanicBoundsB [kind] x y mem)
+-(PanicBounds [kind] x y mem) && boundsABI(kind) == 0 -> (LoweredPanicBoundsA [kind] x y mem)
+-(PanicBounds [kind] x y mem) && boundsABI(kind) == 1 -> (LoweredPanicBoundsB [kind] x y mem)
+-(PanicBounds [kind] x y mem) && boundsABI(kind) == 2 -> (LoweredPanicBoundsC [kind] x y mem)
++(PanicBounds [kind] x y mem) && boundsABI(kind) == 0 => (LoweredPanicBoundsA [kind] x y mem)
++(PanicBounds [kind] x y mem) && boundsABI(kind) == 1 => (LoweredPanicBoundsB [kind] x y mem)
++(PanicBounds [kind] x y mem) && boundsABI(kind) == 2 => (LoweredPanicBoundsC [kind] x y mem)
+ 
+-(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 0 -> (LoweredPanicExtendA [kind] hi lo y mem)
+-(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 1 -> (LoweredPanicExtendB [kind] hi lo y mem)
+-(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 2 -> (LoweredPanicExtendC [kind] hi lo y mem)
++(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 0 => (LoweredPanicExtendA [kind] hi lo y mem)
++(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 1 => (LoweredPanicExtendB [kind] hi lo y mem)
++(PanicExtend [kind] hi lo y mem) && boundsABI(kind) == 2 => (LoweredPanicExtendC [kind] hi lo y mem)
+ 
+ // Optimizations
+ 
+ // fold offset into address
+-(ADDconst [off1] (MOVWaddr [off2] {sym} ptr)) -> (MOVWaddr [off1+off2] {sym} ptr)
+-(SUBconst [off1] (MOVWaddr [off2] {sym} ptr)) -> (MOVWaddr [off2-off1] {sym} ptr)
++(ADDconst [off1] (MOVWaddr [off2] {sym} ptr)) => (MOVWaddr [off1+off2] {sym} ptr)
++(SUBconst [off1] (MOVWaddr [off2] {sym} ptr)) => (MOVWaddr [off2-off1] {sym} ptr)
+ 
+ // fold address into load/store
+ (MOVBload [off1] {sym} (ADDconst [off2] ptr) mem) -> (MOVBload [off1+off2] {sym} ptr mem)
 -- 
 2.22.0.windows.1
 
