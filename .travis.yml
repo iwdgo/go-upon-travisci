@@ -62,4 +62,5 @@ after_script:
   - go get -u github.com/iwdgo/toolstash-check
   - toolstash-check -v -repo=$GOCLONE
   - echo "toolstash-check -all"
+  - df -H
   - toolstash-check -all -repo=$GOCLONE

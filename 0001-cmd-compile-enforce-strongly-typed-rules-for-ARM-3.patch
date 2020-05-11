@@ -1,16 +1,17 @@
-From fc0361910c1af9c4c9e983ad3c9c9528ad750244 Mon Sep 17 00:00:00 2001
+From 25b4500994acb9a5737446402c2a4d3b622d2de0 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
-Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM from zeros
- until pseudo-ops
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (3)
+
+From absorbed tests until ...
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 36 +++++++++++-----------
- 1 file changed, 18 insertions(+), 18 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 82 +++++++++++-----------
+ 1 file changed, 41 insertions(+), 41 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 1cb660bc26..4faed3db7f 100644
+index 1cb660bc26..de1671c8ab 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -271,7 +271,7 @@
@@ -69,7 +70,7 @@ index 1cb660bc26..4faed3db7f 100644
  	(MOVBstore [2] dst (MOVBUload [2] src mem)
  		(MOVBstore [1] dst (MOVBUload [1] src mem)
  			(MOVBstore dst (MOVBUload src mem) mem)))
-@@ -347,20 +347,20 @@
+@@ -347,49 +347,49 @@
  		mem)
  
  // calls
@@ -99,7 +100,59 @@ index 1cb660bc26..4faed3db7f 100644
 +(GetCallerPC ...) => (LoweredGetCallerPC ...)
  
  // Absorb pseudo-ops into blocks.
- (If (Equal cc) yes no) -> (EQ cc yes no)
+-(If (Equal cc) yes no) -> (EQ cc yes no)
+-(If (NotEqual cc) yes no) -> (NE cc yes no)
+-(If (LessThan cc) yes no) -> (LT cc yes no)
+-(If (LessThanU cc) yes no) -> (ULT cc yes no)
+-(If (LessEqual cc) yes no) -> (LE cc yes no)
+-(If (LessEqualU cc) yes no) -> (ULE cc yes no)
+-(If (GreaterThan cc) yes no) -> (GT cc yes no)
+-(If (GreaterThanU cc) yes no) -> (UGT cc yes no)
+-(If (GreaterEqual cc) yes no) -> (GE cc yes no)
+-(If (GreaterEqualU cc) yes no) -> (UGE cc yes no)
+-
+-(If cond yes no) -> (NE (CMPconst [0] cond) yes no)
++(If (Equal cc) yes no) => (EQ cc yes no)
++(If (NotEqual cc) yes no) => (NE cc yes no)
++(If (LessThan cc) yes no) => (LT cc yes no)
++(If (LessThanU cc) yes no) => (ULT cc yes no)
++(If (LessEqual cc) yes no) => (LE cc yes no)
++(If (LessEqualU cc) yes no) => (ULE cc yes no)
++(If (GreaterThan cc) yes no) => (GT cc yes no)
++(If (GreaterThanU cc) yes no) => (UGT cc yes no)
++(If (GreaterEqual cc) yes no) => (GE cc yes no)
++(If (GreaterEqualU cc) yes no) => (UGE cc yes no)
++
++(If cond yes no) => (NE (CMPconst [0] cond) yes no)
+ 
+ // Absorb boolean tests into block
+-(NE (CMPconst [0] (Equal cc)) yes no) -> (EQ cc yes no)
+-(NE (CMPconst [0] (NotEqual cc)) yes no) -> (NE cc yes no)
+-(NE (CMPconst [0] (LessThan cc)) yes no) -> (LT cc yes no)
+-(NE (CMPconst [0] (LessThanU cc)) yes no) -> (ULT cc yes no)
+-(NE (CMPconst [0] (LessEqual cc)) yes no) -> (LE cc yes no)
+-(NE (CMPconst [0] (LessEqualU cc)) yes no) -> (ULE cc yes no)
+-(NE (CMPconst [0] (GreaterThan cc)) yes no) -> (GT cc yes no)
+-(NE (CMPconst [0] (GreaterThanU cc)) yes no) -> (UGT cc yes no)
+-(NE (CMPconst [0] (GreaterEqual cc)) yes no) -> (GE cc yes no)
+-(NE (CMPconst [0] (GreaterEqualU cc)) yes no) -> (UGE cc yes no)
++(NE (CMPconst [0] (Equal cc)) yes no) => (EQ cc yes no)
++(NE (CMPconst [0] (NotEqual cc)) yes no) => (NE cc yes no)
++(NE (CMPconst [0] (LessThan cc)) yes no) => (LT cc yes no)
++(NE (CMPconst [0] (LessThanU cc)) yes no) => (ULT cc yes no)
++(NE (CMPconst [0] (LessEqual cc)) yes no) => (LE cc yes no)
++(NE (CMPconst [0] (LessEqualU cc)) yes no) => (ULE cc yes no)
++(NE (CMPconst [0] (GreaterThan cc)) yes no) => (GT cc yes no)
++(NE (CMPconst [0] (GreaterThanU cc)) yes no) => (UGT cc yes no)
++(NE (CMPconst [0] (GreaterEqual cc)) yes no) => (GE cc yes no)
++(NE (CMPconst [0] (GreaterEqualU cc)) yes no) => (UGE cc yes no)
+ 
+ // Write barrier.
+-(WB ...) -> (LoweredWB ...)
++(WB ...) => (LoweredWB ...)
+ 
+ (PanicBounds [kind] x y mem) && boundsABI(kind) == 0 -> (LoweredPanicBoundsA [kind] x y mem)
+ (PanicBounds [kind] x y mem) && boundsABI(kind) == 1 -> (LoweredPanicBoundsB [kind] x y mem)
 -- 
 2.22.0.windows.1
 
