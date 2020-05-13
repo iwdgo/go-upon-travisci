@@ -1,15 +1,15 @@
-From 9f875fb3240ba8478eee3b2359c5a96ddb633d53 Mon Sep 17 00:00:00 2001
+From fa0da0cb71793fbb1b48d9356236077ee8343b6c Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Tue, 12 May 2020 22:08:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
 
 Change-Id: I7976a80595475abc848b9d84dc9197cb862d1290
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 186 ++++++++++-----------
- 1 file changed, 93 insertions(+), 93 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 296 ++++++++++-----------
+ 1 file changed, 148 insertions(+), 148 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ee19f84e27..99ffc2919d 100644
+index ee19f84e27..dc490bd764 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,7 +544,7 @@
@@ -21,7 +21,7 @@ index ee19f84e27..99ffc2919d 100644
  
  // mul by constant
  (MUL x (MOVWconst [c])) && int32(c) == -1 -> (RSBconst [0] x)
-@@ -603,128 +603,128 @@
+@@ -603,168 +603,168 @@
  (MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
  
  // div by constant
@@ -217,31 +217,126 @@ index ee19f84e27..99ffc2919d 100644
  
  // absorb flag constants into boolean values
 -(Equal (FlagEQ)) -> (MOVWconst [1])
-+(Equal (FlagEQ)) => (MOVWconst [1])
- (Equal (FlagLT_ULT)) -> (MOVWconst [0])
- (Equal (FlagLT_UGT)) -> (MOVWconst [0])
- (Equal (FlagGT_ULT)) -> (MOVWconst [0])
- (Equal (FlagGT_UGT)) -> (MOVWconst [0])
- 
+-(Equal (FlagLT_ULT)) -> (MOVWconst [0])
+-(Equal (FlagLT_UGT)) -> (MOVWconst [0])
+-(Equal (FlagGT_ULT)) -> (MOVWconst [0])
+-(Equal (FlagGT_UGT)) -> (MOVWconst [0])
+-
 -(NotEqual (FlagEQ)) -> (MOVWconst [0])
-+(NotEqual (FlagEQ)) => (MOVWconst [0])
- (NotEqual (FlagLT_ULT)) -> (MOVWconst [1])
- (NotEqual (FlagLT_UGT)) -> (MOVWconst [1])
- (NotEqual (FlagGT_ULT)) -> (MOVWconst [1])
- (NotEqual (FlagGT_UGT)) -> (MOVWconst [1])
- 
+-(NotEqual (FlagLT_ULT)) -> (MOVWconst [1])
+-(NotEqual (FlagLT_UGT)) -> (MOVWconst [1])
+-(NotEqual (FlagGT_ULT)) -> (MOVWconst [1])
+-(NotEqual (FlagGT_UGT)) -> (MOVWconst [1])
+-
 -(LessThan (FlagEQ)) -> (MOVWconst [0])
-+(LessThan (FlagEQ)) => (MOVWconst [0])
- (LessThan (FlagLT_ULT)) -> (MOVWconst [1])
- (LessThan (FlagLT_UGT)) -> (MOVWconst [1])
- (LessThan (FlagGT_ULT)) -> (MOVWconst [0])
- (LessThan (FlagGT_UGT)) -> (MOVWconst [0])
- 
+-(LessThan (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessThan (FlagLT_UGT)) -> (MOVWconst [1])
+-(LessThan (FlagGT_ULT)) -> (MOVWconst [0])
+-(LessThan (FlagGT_UGT)) -> (MOVWconst [0])
+-
 -(LessThanU (FlagEQ)) -> (MOVWconst [0])
+-(LessThanU (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessThanU (FlagLT_UGT)) -> (MOVWconst [0])
+-(LessThanU (FlagGT_ULT)) -> (MOVWconst [1])
+-(LessThanU (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(LessEqual (FlagEQ)) -> (MOVWconst [1])
+-(LessEqual (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessEqual (FlagLT_UGT)) -> (MOVWconst [1])
+-(LessEqual (FlagGT_ULT)) -> (MOVWconst [0])
+-(LessEqual (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(LessEqualU (FlagEQ)) -> (MOVWconst [1])
+-(LessEqualU (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessEqualU (FlagLT_UGT)) -> (MOVWconst [0])
+-(LessEqualU (FlagGT_ULT)) -> (MOVWconst [1])
+-(LessEqualU (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(GreaterThan (FlagEQ)) -> (MOVWconst [0])
+-(GreaterThan (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterThan (FlagLT_UGT)) -> (MOVWconst [0])
+-(GreaterThan (FlagGT_ULT)) -> (MOVWconst [1])
+-(GreaterThan (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(GreaterThanU (FlagEQ)) -> (MOVWconst [0])
+-(GreaterThanU (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterThanU (FlagLT_UGT)) -> (MOVWconst [1])
+-(GreaterThanU (FlagGT_ULT)) -> (MOVWconst [0])
+-(GreaterThanU (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(GreaterEqual (FlagEQ)) -> (MOVWconst [1])
+-(GreaterEqual (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterEqual (FlagLT_UGT)) -> (MOVWconst [0])
+-(GreaterEqual (FlagGT_ULT)) -> (MOVWconst [1])
+-(GreaterEqual (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(GreaterEqualU (FlagEQ)) -> (MOVWconst [1])
+-(GreaterEqualU (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterEqualU (FlagLT_UGT)) -> (MOVWconst [1])
+-(GreaterEqualU (FlagGT_ULT)) -> (MOVWconst [0])
+-(GreaterEqualU (FlagGT_UGT)) -> (MOVWconst [1])
++(Equal (FlagEQ)) => (MOVWconst [1])
++(Equal (FlagLT_ULT)) => (MOVWconst [0])
++(Equal (FlagLT_UGT)) => (MOVWconst [0])
++(Equal (FlagGT_ULT)) => (MOVWconst [0])
++(Equal (FlagGT_UGT)) => (MOVWconst [0])
++
++(NotEqual (FlagEQ)) => (MOVWconst [0])
++(NotEqual (FlagLT_ULT)) => (MOVWconst [1])
++(NotEqual (FlagLT_UGT)) => (MOVWconst [1])
++(NotEqual (FlagGT_ULT)) => (MOVWconst [1])
++(NotEqual (FlagGT_UGT)) => (MOVWconst [1])
++
++(LessThan (FlagEQ)) => (MOVWconst [0])
++(LessThan (FlagLT_ULT)) => (MOVWconst [1])
++(LessThan (FlagLT_UGT)) => (MOVWconst [1])
++(LessThan (FlagGT_ULT)) => (MOVWconst [0])
++(LessThan (FlagGT_UGT)) => (MOVWconst [0])
++
 +(LessThanU (FlagEQ)) => (MOVWconst [0])
- (LessThanU (FlagLT_ULT)) -> (MOVWconst [1])
- (LessThanU (FlagLT_UGT)) -> (MOVWconst [0])
- (LessThanU (FlagGT_ULT)) -> (MOVWconst [1])
++(LessThanU (FlagLT_ULT)) => (MOVWconst [1])
++(LessThanU (FlagLT_UGT)) => (MOVWconst [0])
++(LessThanU (FlagGT_ULT)) => (MOVWconst [1])
++(LessThanU (FlagGT_UGT)) => (MOVWconst [0])
++
++(LessEqual (FlagEQ)) => (MOVWconst [1])
++(LessEqual (FlagLT_ULT)) => (MOVWconst [1])
++(LessEqual (FlagLT_UGT)) => (MOVWconst [1])
++(LessEqual (FlagGT_ULT)) => (MOVWconst [0])
++(LessEqual (FlagGT_UGT)) => (MOVWconst [0])
++
++(LessEqualU (FlagEQ)) => (MOVWconst [1])
++(LessEqualU (FlagLT_ULT)) => (MOVWconst [1])
++(LessEqualU (FlagLT_UGT)) => (MOVWconst [0])
++(LessEqualU (FlagGT_ULT)) => (MOVWconst [1])
++(LessEqualU (FlagGT_UGT)) => (MOVWconst [0])
++
++(GreaterThan (FlagEQ)) => (MOVWconst [0])
++(GreaterThan (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterThan (FlagLT_UGT)) => (MOVWconst [0])
++(GreaterThan (FlagGT_ULT)) => (MOVWconst [1])
++(GreaterThan (FlagGT_UGT)) => (MOVWconst [1])
++
++(GreaterThanU (FlagEQ)) => (MOVWconst [0])
++(GreaterThanU (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterThanU (FlagLT_UGT)) => (MOVWconst [1])
++(GreaterThanU (FlagGT_ULT)) => (MOVWconst [0])
++(GreaterThanU (FlagGT_UGT)) => (MOVWconst [1])
++
++(GreaterEqual (FlagEQ)) => (MOVWconst [1])
++(GreaterEqual (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterEqual (FlagLT_UGT)) => (MOVWconst [0])
++(GreaterEqual (FlagGT_ULT)) => (MOVWconst [1])
++(GreaterEqual (FlagGT_UGT)) => (MOVWconst [1])
++
++(GreaterEqualU (FlagEQ)) => (MOVWconst [1])
++(GreaterEqualU (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterEqualU (FlagLT_UGT)) => (MOVWconst [1])
++(GreaterEqualU (FlagGT_ULT)) => (MOVWconst [0])
++(GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
+ 
+ // absorb InvertFlags into boolean values
+ (Equal (InvertFlags x)) -> (Equal x)
 -- 
 2.22.0.windows.1
 
