@@ -1,15 +1,15 @@
-From 801e79a70299a307afe42930341da2d7f6d6fc48 Mon Sep 17 00:00:00 2001
+From 41c3fd95205bc11f5f02f10d202370972a3e495f Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Tue, 12 May 2020 22:08:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
 
 Change-Id: I7976a80595475abc848b9d84dc9197cb862d1290
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 42 +++++++++++-----------
- 1 file changed, 21 insertions(+), 21 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 98 +++++++++++-----------
+ 1 file changed, 49 insertions(+), 49 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ee19f84e27..16d13aca47 100644
+index ee19f84e27..65a80e6e11 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,7 +544,7 @@
@@ -21,7 +21,7 @@ index ee19f84e27..16d13aca47 100644
  
  // mul by constant
  (MUL x (MOVWconst [c])) && int32(c) == -1 -> (RSBconst [0] x)
-@@ -603,37 +603,37 @@
+@@ -603,65 +603,65 @@
  (MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
  
  // div by constant
@@ -75,10 +75,66 @@ index ee19f84e27..16d13aca47 100644
  
  // absorb flag constants into branches
 -(EQ (FlagEQ) yes no) -> (First yes no)
+-(EQ (FlagLT_ULT) yes no) -> (First no yes)
+-(EQ (FlagLT_UGT) yes no) -> (First no yes)
+-(EQ (FlagGT_ULT) yes no) -> (First no yes)
+-(EQ (FlagGT_UGT) yes no) -> (First no yes)
+-
+-(NE (FlagEQ) yes no) -> (First no yes)
+-(NE (FlagLT_ULT) yes no) -> (First yes no)
+-(NE (FlagLT_UGT) yes no) -> (First yes no)
+-(NE (FlagGT_ULT) yes no) -> (First yes no)
+-(NE (FlagGT_UGT) yes no) -> (First yes no)
+-
+-(LT (FlagEQ) yes no) -> (First no yes)
+-(LT (FlagLT_ULT) yes no) -> (First yes no)
+-(LT (FlagLT_UGT) yes no) -> (First yes no)
+-(LT (FlagGT_ULT) yes no) -> (First no yes)
+-(LT (FlagGT_UGT) yes no) -> (First no yes)
+-
+-(LE (FlagEQ) yes no) -> (First yes no)
+-(LE (FlagLT_ULT) yes no) -> (First yes no)
+-(LE (FlagLT_UGT) yes no) -> (First yes no)
+-(LE (FlagGT_ULT) yes no) -> (First no yes)
+-(LE (FlagGT_UGT) yes no) -> (First no yes)
+-
+-(GT (FlagEQ) yes no) -> (First no yes)
+-(GT (FlagLT_ULT) yes no) -> (First no yes)
+-(GT (FlagLT_UGT) yes no) -> (First no yes)
+-(GT (FlagGT_ULT) yes no) -> (First yes no)
+-(GT (FlagGT_UGT) yes no) -> (First yes no)
 +(EQ (FlagEQ) yes no) => (First yes no)
- (EQ (FlagLT_ULT) yes no) -> (First no yes)
- (EQ (FlagLT_UGT) yes no) -> (First no yes)
- (EQ (FlagGT_ULT) yes no) -> (First no yes)
++(EQ (FlagLT_ULT) yes no) => (First no yes)
++(EQ (FlagLT_UGT) yes no) => (First no yes)
++(EQ (FlagGT_ULT) yes no) => (First no yes)
++(EQ (FlagGT_UGT) yes no) => (First no yes)
++
++(NE (FlagEQ) yes no) => (First no yes)
++(NE (FlagLT_ULT) yes no) => (First yes no)
++(NE (FlagLT_UGT) yes no) => (First yes no)
++(NE (FlagGT_ULT) yes no) => (First yes no)
++(NE (FlagGT_UGT) yes no) => (First yes no)
++
++(LT (FlagEQ) yes no) => (First no yes)
++(LT (FlagLT_ULT) yes no) => (First yes no)
++(LT (FlagLT_UGT) yes no) => (First yes no)
++(LT (FlagGT_ULT) yes no) => (First no yes)
++(LT (FlagGT_UGT) yes no) => (First no yes)
++
++(LE (FlagEQ) yes no) => (First yes no)
++(LE (FlagLT_ULT) yes no) => (First yes no)
++(LE (FlagLT_UGT) yes no) => (First yes no)
++(LE (FlagGT_ULT) yes no) => (First no yes)
++(LE (FlagGT_UGT) yes no) => (First no yes)
++
++(GT (FlagEQ) yes no) => (First no yes)
++(GT (FlagLT_ULT) yes no) => (First no yes)
++(GT (FlagLT_UGT) yes no) => (First no yes)
++(GT (FlagGT_ULT) yes no) => (First yes no)
++(GT (FlagGT_UGT) yes no) => (First yes no)
+ 
+ (GE (FlagEQ) yes no) -> (First yes no)
+ (GE (FlagLT_ULT) yes no) -> (First no yes)
 -- 
 2.22.0.windows.1
 
