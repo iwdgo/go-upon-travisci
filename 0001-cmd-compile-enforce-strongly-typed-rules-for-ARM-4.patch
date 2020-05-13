@@ -1,15 +1,15 @@
-From 09ef293f2916588b45070d508c0f364a3db6ef34 Mon Sep 17 00:00:00 2001
+From 9f875fb3240ba8478eee3b2359c5a96ddb633d53 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Tue, 12 May 2020 22:08:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
 
 Change-Id: I7976a80595475abc848b9d84dc9197cb862d1290
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 158 ++++++++++-----------
- 1 file changed, 79 insertions(+), 79 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 186 ++++++++++-----------
+ 1 file changed, 93 insertions(+), 93 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ee19f84e27..cb5a76af9c 100644
+index ee19f84e27..99ffc2919d 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,7 +544,7 @@
@@ -21,7 +21,7 @@ index ee19f84e27..cb5a76af9c 100644
  
  // mul by constant
  (MUL x (MOVWconst [c])) && int32(c) == -1 -> (RSBconst [0] x)
-@@ -603,95 +603,95 @@
+@@ -603,128 +603,128 @@
  (MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
  
  // div by constant
@@ -194,7 +194,54 @@ index ee19f84e27..cb5a76af9c 100644
 +(UGE (FlagGT_UGT) yes no) => (First yes no)
  
  // absorb InvertFlags into branches
- (LT (InvertFlags cmp) yes no) -> (GT cmp yes no)
+-(LT (InvertFlags cmp) yes no) -> (GT cmp yes no)
+-(GT (InvertFlags cmp) yes no) -> (LT cmp yes no)
+-(LE (InvertFlags cmp) yes no) -> (GE cmp yes no)
+-(GE (InvertFlags cmp) yes no) -> (LE cmp yes no)
+-(ULT (InvertFlags cmp) yes no) -> (UGT cmp yes no)
+-(UGT (InvertFlags cmp) yes no) -> (ULT cmp yes no)
+-(ULE (InvertFlags cmp) yes no) -> (UGE cmp yes no)
+-(UGE (InvertFlags cmp) yes no) -> (ULE cmp yes no)
+-(EQ (InvertFlags cmp) yes no) -> (EQ cmp yes no)
+-(NE (InvertFlags cmp) yes no) -> (NE cmp yes no)
++(LT (InvertFlags cmp) yes no) => (GT cmp yes no)
++(GT (InvertFlags cmp) yes no) => (LT cmp yes no)
++(LE (InvertFlags cmp) yes no) => (GE cmp yes no)
++(GE (InvertFlags cmp) yes no) => (LE cmp yes no)
++(ULT (InvertFlags cmp) yes no) => (UGT cmp yes no)
++(UGT (InvertFlags cmp) yes no) => (ULT cmp yes no)
++(ULE (InvertFlags cmp) yes no) => (UGE cmp yes no)
++(UGE (InvertFlags cmp) yes no) => (ULE cmp yes no)
++(EQ (InvertFlags cmp) yes no) => (EQ cmp yes no)
++(NE (InvertFlags cmp) yes no) => (NE cmp yes no)
+ 
+ // absorb flag constants into boolean values
+-(Equal (FlagEQ)) -> (MOVWconst [1])
++(Equal (FlagEQ)) => (MOVWconst [1])
+ (Equal (FlagLT_ULT)) -> (MOVWconst [0])
+ (Equal (FlagLT_UGT)) -> (MOVWconst [0])
+ (Equal (FlagGT_ULT)) -> (MOVWconst [0])
+ (Equal (FlagGT_UGT)) -> (MOVWconst [0])
+ 
+-(NotEqual (FlagEQ)) -> (MOVWconst [0])
++(NotEqual (FlagEQ)) => (MOVWconst [0])
+ (NotEqual (FlagLT_ULT)) -> (MOVWconst [1])
+ (NotEqual (FlagLT_UGT)) -> (MOVWconst [1])
+ (NotEqual (FlagGT_ULT)) -> (MOVWconst [1])
+ (NotEqual (FlagGT_UGT)) -> (MOVWconst [1])
+ 
+-(LessThan (FlagEQ)) -> (MOVWconst [0])
++(LessThan (FlagEQ)) => (MOVWconst [0])
+ (LessThan (FlagLT_ULT)) -> (MOVWconst [1])
+ (LessThan (FlagLT_UGT)) -> (MOVWconst [1])
+ (LessThan (FlagGT_ULT)) -> (MOVWconst [0])
+ (LessThan (FlagGT_UGT)) -> (MOVWconst [0])
+ 
+-(LessThanU (FlagEQ)) -> (MOVWconst [0])
++(LessThanU (FlagEQ)) => (MOVWconst [0])
+ (LessThanU (FlagLT_ULT)) -> (MOVWconst [1])
+ (LessThanU (FlagLT_UGT)) -> (MOVWconst [0])
+ (LessThanU (FlagGT_ULT)) -> (MOVWconst [1])
 -- 
 2.22.0.windows.1
 
