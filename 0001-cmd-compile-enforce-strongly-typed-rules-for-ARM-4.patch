@@ -1,15 +1,15 @@
-From c7401a47ae6b109fb327f02bab30dd1aeb7ac43b Mon Sep 17 00:00:00 2001
+From 90245f6c8d30b8baa9391100dd93cb44a1cab9d9 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Tue, 12 May 2020 22:08:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
 
 Change-Id: I7976a80595475abc848b9d84dc9197cb862d1290
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 46 +++++++++++-----------
+ 1 file changed, 23 insertions(+), 23 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ee19f84e27..960f1ef3e1 100644
+index ee19f84e27..2132f98d00 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,7 +544,7 @@
@@ -21,24 +21,52 @@ index ee19f84e27..960f1ef3e1 100644
  
  // mul by constant
  (MUL x (MOVWconst [c])) && int32(c) == -1 -> (RSBconst [0] x)
-@@ -603,13 +603,13 @@
+@@ -603,37 +603,37 @@
  (MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
  
  // div by constant
 -(Select0 (CALLudiv x (MOVWconst [1]))) -> x
+-(Select1 (CALLudiv _ (MOVWconst [1]))) -> (MOVWconst [0])
+-(Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (SRLconst [log2(c)] x)
+-(Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (ANDconst [c-1] x)
 +(Select0 (CALLudiv x (MOVWconst [1]))) => x
- (Select1 (CALLudiv _ (MOVWconst [1]))) -> (MOVWconst [0])
- (Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (SRLconst [log2(c)] x)
- (Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (ANDconst [c-1] x)
++(Select1 (CALLudiv _ (MOVWconst [1]))) => (MOVWconst [0])
++(Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) => (SRLconst [log2(c)] x)
++(Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) => (ANDconst [c-1] x)
  
  // constant comparisons
 -(CMPconst (MOVWconst [x]) [y]) && int32(x)==int32(y) -> (FlagEQ)
+-(CMPconst (MOVWconst [x]) [y]) && int32(x)<int32(y) && uint32(x)<uint32(y) -> (FlagLT_ULT)
+-(CMPconst (MOVWconst [x]) [y]) && int32(x)<int32(y) && uint32(x)>uint32(y) -> (FlagLT_UGT)
+-(CMPconst (MOVWconst [x]) [y]) && int32(x)>int32(y) && uint32(x)<uint32(y) -> (FlagGT_ULT)
+-(CMPconst (MOVWconst [x]) [y]) && int32(x)>int32(y) && uint32(x)>uint32(y) -> (FlagGT_UGT)
+-(CMNconst (MOVWconst [x]) [y]) && int32(x)==int32(-y) -> (FlagEQ)
+-(CMNconst (MOVWconst [x]) [y]) && int32(x)<int32(-y) && uint32(x)<uint32(-y) -> (FlagLT_ULT)
+-(CMNconst (MOVWconst [x]) [y]) && int32(x)<int32(-y) && uint32(x)>uint32(-y) -> (FlagLT_UGT)
+-(CMNconst (MOVWconst [x]) [y]) && int32(x)>int32(-y) && uint32(x)<uint32(-y) -> (FlagGT_ULT)
+-(CMNconst (MOVWconst [x]) [y]) && int32(x)>int32(-y) && uint32(x)>uint32(-y) -> (FlagGT_UGT)
+-(TSTconst (MOVWconst [x]) [y]) && int32(x&y)==0 -> (FlagEQ)
+-(TSTconst (MOVWconst [x]) [y]) && int32(x&y)<0 -> (FlagLT_UGT)
+-(TSTconst (MOVWconst [x]) [y]) && int32(x&y)>0 -> (FlagGT_UGT)
+-(TEQconst (MOVWconst [x]) [y]) && int32(x^y)==0 -> (FlagEQ)
+-(TEQconst (MOVWconst [x]) [y]) && int32(x^y)<0 -> (FlagLT_UGT)
+-(TEQconst (MOVWconst [x]) [y]) && int32(x^y)>0 -> (FlagGT_UGT)
 +(CMPconst (MOVWconst [x]) [y]) && int32(x)==int32(y) => (FlagEQ)
- (CMPconst (MOVWconst [x]) [y]) && int32(x)<int32(y) && uint32(x)<uint32(y) -> (FlagLT_ULT)
- (CMPconst (MOVWconst [x]) [y]) && int32(x)<int32(y) && uint32(x)>uint32(y) -> (FlagLT_UGT)
- (CMPconst (MOVWconst [x]) [y]) && int32(x)>int32(y) && uint32(x)<uint32(y) -> (FlagGT_ULT)
-@@ -627,13 +627,13 @@
- (TEQconst (MOVWconst [x]) [y]) && int32(x^y)>0 -> (FlagGT_UGT)
++(CMPconst (MOVWconst [x]) [y]) && int32(x)<int32(y) && uint32(x)<uint32(y) => (FlagLT_ULT)
++(CMPconst (MOVWconst [x]) [y]) && int32(x)<int32(y) && uint32(x)>uint32(y) => (FlagLT_UGT)
++(CMPconst (MOVWconst [x]) [y]) && int32(x)>int32(y) && uint32(x)<uint32(y) => (FlagGT_ULT)
++(CMPconst (MOVWconst [x]) [y]) && int32(x)>int32(y) && uint32(x)>uint32(y) => (FlagGT_UGT)
++(CMNconst (MOVWconst [x]) [y]) && int32(x)==int32(-y) => (FlagEQ)
++(CMNconst (MOVWconst [x]) [y]) && int32(x)<int32(-y) && uint32(x)<uint32(-y) => (FlagLT_ULT)
++(CMNconst (MOVWconst [x]) [y]) && int32(x)<int32(-y) && uint32(x)>uint32(-y) => (FlagLT_UGT)
++(CMNconst (MOVWconst [x]) [y]) && int32(x)>int32(-y) && uint32(x)<uint32(-y) => (FlagGT_ULT)
++(CMNconst (MOVWconst [x]) [y]) && int32(x)>int32(-y) && uint32(x)>uint32(-y) => (FlagGT_UGT)
++(TSTconst (MOVWconst [x]) [y]) && int32(x&y)==0 => (FlagEQ)
++(TSTconst (MOVWconst [x]) [y]) && int32(x&y)<0 => (FlagLT_UGT)
++(TSTconst (MOVWconst [x]) [y]) && int32(x&y)>0 => (FlagGT_UGT)
++(TEQconst (MOVWconst [x]) [y]) && int32(x^y)==0 => (FlagEQ)
++(TEQconst (MOVWconst [x]) [y]) && int32(x^y)<0 => (FlagLT_UGT)
++(TEQconst (MOVWconst [x]) [y]) && int32(x^y)>0 => (FlagGT_UGT)
  
  // other known comparisons
 -(CMPconst (MOVBUreg _) [c]) && 0xff < c -> (FlagLT_ULT)
