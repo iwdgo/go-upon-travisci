@@ -1,4 +1,4 @@
-From 8114ae1cb0b759f6054428135f98d8764e58125a Mon Sep 17 00:00:00 2001
+From 05150fc1bd818f3b9d819c14a70e7c9e1fe88fe1 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
@@ -13,7 +13,7 @@ Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
  1 file changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..52df43d098 100644
+index dc490bd764..adf3092aaf 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -767,7 +767,7 @@
@@ -55,15 +55,15 @@ index dc490bd764..52df43d098 100644
  (SUBconst [0] x) -> x
  (ANDconst [0] _) -> (MOVWconst [0])
  (ANDconst [c] x) && int32(c)==-1 -> x
-@@ -865,7 +865,7 @@
- (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
+@@ -866,7 +866,7 @@
  
  // absorb shifts into ops
--(ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
-+(ADD x (SLLconst [c] y)) => (ADDshiftLL x y [c])
- (ADD x (SRLconst [c] y)) -> (ADDshiftRL x y [c])
+ (ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
+-(ADD x (SRLconst [c] y)) -> (ADDshiftRL x y [c])
++(ADD x (SRLconst [c] y)) => (ADDshiftRL x y [c])
  (ADD x (SRAconst [c] y)) -> (ADDshiftRA x y [c])
  (ADD x (SLL y z)) -> (ADDshiftLLreg x y z)
+ (ADD x (SRL y z)) -> (ADDshiftRLreg x y z)
 -- 
 2.22.0.windows.1
 
