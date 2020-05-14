@@ -16,37 +16,17 @@ diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/intern
 index dc490bd764..f7406a146f 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -765,11 +765,11 @@
- (GreaterEqualU (FlagLT_UGT)) => (MOVWconst [1])
- (GreaterEqualU (FlagGT_ULT)) => (MOVWconst [0])
- (GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
- 
+@@ -769,3 +769,3 @@
  // absorb InvertFlags into boolean values
 -(Equal (InvertFlags x)) -> (Equal x)
 +(Equal (InvertFlags x)) => (Equal x)
  (NotEqual (InvertFlags x)) -> (NotEqual x)
- (LessThan (InvertFlags x)) -> (GreaterThan x)
- (LessThanU (InvertFlags x)) -> (GreaterThanU x)
- (GreaterThan (InvertFlags x)) -> (LessThan x)
- (GreaterThanU (InvertFlags x)) -> (LessThanU x)
-@@ -777,11 +777,11 @@
- (LessEqualU (InvertFlags x)) -> (GreaterEqualU x)
- (GreaterEqual (InvertFlags x)) -> (LessEqual x)
- (GreaterEqualU (InvertFlags x)) -> (LessEqualU x)
- 
+@@ -781,3 +781,3 @@
  // absorb flag constants into conditional instructions
 -(CMOVWLSconst _ (FlagEQ) [c]) -> (MOVWconst [c])
 +(CMOVWLSconst _ (FlagEQ) [c]) => (MOVWconst [c])
  (CMOVWLSconst _ (FlagLT_ULT) [c]) -> (MOVWconst [c])
- (CMOVWLSconst x (FlagLT_UGT)) -> x
- (CMOVWLSconst _ (FlagGT_ULT) [c]) -> (MOVWconst [c])
- (CMOVWLSconst x (FlagGT_UGT)) -> x
- 
-@@ -789,21 +789,21 @@
- (CMOVWHSconst x (FlagLT_ULT)) -> x
- (CMOVWHSconst _ (FlagLT_UGT) [c]) -> (MOVWconst [c])
- (CMOVWHSconst x (FlagGT_ULT)) -> x
- (CMOVWHSconst _ (FlagGT_UGT) [c]) -> (MOVWconst [c])
+@@ -793,6 +793,6 @@
  
 -(CMOVWLSconst x (InvertFlags flags) [c]) -> (CMOVWHSconst x flags [c])
 +(CMOVWLSconst x (InvertFlags flags) [c]) => (CMOVWHSconst x flags [c])
@@ -55,23 +35,12 @@ index dc490bd764..f7406a146f 100644
 -(SRAcond x _ (FlagEQ)) -> (SRAconst x [31])
 +(SRAcond x _ (FlagEQ)) => (SRAconst x [31])
  (SRAcond x y (FlagLT_ULT)) -> (SRA x y)
- (SRAcond x _ (FlagLT_UGT)) -> (SRAconst x [31])
- (SRAcond x y (FlagGT_ULT)) -> (SRA x y)
- (SRAcond x _ (FlagGT_UGT)) -> (SRAconst x [31])
- 
+@@ -803,3 +803,3 @@
  // remove redundant *const ops
 -(ADDconst [0] x) -> x
 +(ADDconst [0] x) => x
  (SUBconst [0] x) -> x
- (ANDconst [0] _) -> (MOVWconst [0])
- (ANDconst [c] x) && int32(c)==-1 -> x
- (ORconst [0] x) -> x
- (ORconst [c] _) && int32(c)==-1 -> (MOVWconst [-1])
-@@ -863,107 +863,107 @@
- // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
- (BFX [c] (MOVWconst [d])) => (MOVWconst [d<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))])
- (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
- 
+@@ -867,99 +867,99 @@
  // absorb shifts into ops
 -(ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
 -(ADD x (SRLconst [c] y)) -> (ADDshiftRL x y [c])
@@ -268,10 +237,6 @@ index dc490bd764..f7406a146f 100644
 +(MVN (SRL x y)) => (MVNshiftRLreg x y)
 +(MVN (SRA x y)) => (MVNshiftRAreg x y)
  
- (CMP x (SLLconst [c] y)) -> (CMPshiftLL x y [c])
- (CMP (SLLconst [c] y) x) -> (InvertFlags (CMPshiftLL x y [c]))
- (CMP x (SRLconst [c] y)) -> (CMPshiftRL x y [c])
- (CMP (SRLconst [c] y) x) -> (InvertFlags (CMPshiftRL x y [c]))
 -- 
 2.22.0.windows.1
 
