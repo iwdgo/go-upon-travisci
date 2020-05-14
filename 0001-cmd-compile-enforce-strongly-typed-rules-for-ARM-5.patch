@@ -1,4 +1,4 @@
-From 7f35782168233d858750d9e57c9b5216a9a1e150 Mon Sep 17 00:00:00 2001
+From 59827134050ac4f6cfbf6d3465645f904ac39a90 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
@@ -11,11 +11,11 @@ Toolstash-check...
 
 Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 202 ++++++++++-----------
- 1 file changed, 101 insertions(+), 101 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 266 ++++++++++-----------
+ 1 file changed, 133 insertions(+), 133 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..ba4535855d 100644
+index dc490bd764..7a4206b45f 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -767,7 +767,7 @@
@@ -57,7 +57,7 @@ index dc490bd764..ba4535855d 100644
  (SUBconst [0] x) -> x
  (ANDconst [0] _) -> (MOVWconst [0])
  (ANDconst [c] x) && int32(c)==-1 -> x
-@@ -866,102 +866,102 @@
+@@ -866,136 +866,136 @@
  
  // absorb shifts into ops
  (ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
@@ -157,6 +157,37 @@ index dc490bd764..ba4535855d 100644
 -(MVN (SLL x y)) -> (MVNshiftLLreg x y)
 -(MVN (SRL x y)) -> (MVNshiftRLreg x y)
 -(MVN (SRA x y)) -> (MVNshiftRAreg x y)
+-
+-(CMP x (SLLconst [c] y)) -> (CMPshiftLL x y [c])
+-(CMP (SLLconst [c] y) x) -> (InvertFlags (CMPshiftLL x y [c]))
+-(CMP x (SRLconst [c] y)) -> (CMPshiftRL x y [c])
+-(CMP (SRLconst [c] y) x) -> (InvertFlags (CMPshiftRL x y [c]))
+-(CMP x (SRAconst [c] y)) -> (CMPshiftRA x y [c])
+-(CMP (SRAconst [c] y) x) -> (InvertFlags (CMPshiftRA x y [c]))
+-(CMP x (SLL y z)) -> (CMPshiftLLreg x y z)
+-(CMP (SLL y z) x) -> (InvertFlags (CMPshiftLLreg x y z))
+-(CMP x (SRL y z)) -> (CMPshiftRLreg x y z)
+-(CMP (SRL y z) x) -> (InvertFlags (CMPshiftRLreg x y z))
+-(CMP x (SRA y z)) -> (CMPshiftRAreg x y z)
+-(CMP (SRA y z) x) -> (InvertFlags (CMPshiftRAreg x y z))
+-(TST x (SLLconst [c] y)) -> (TSTshiftLL x y [c])
+-(TST x (SRLconst [c] y)) -> (TSTshiftRL x y [c])
+-(TST x (SRAconst [c] y)) -> (TSTshiftRA x y [c])
+-(TST x (SLL y z)) -> (TSTshiftLLreg x y z)
+-(TST x (SRL y z)) -> (TSTshiftRLreg x y z)
+-(TST x (SRA y z)) -> (TSTshiftRAreg x y z)
+-(TEQ x (SLLconst [c] y)) -> (TEQshiftLL x y [c])
+-(TEQ x (SRLconst [c] y)) -> (TEQshiftRL x y [c])
+-(TEQ x (SRAconst [c] y)) -> (TEQshiftRA x y [c])
+-(TEQ x (SLL y z)) -> (TEQshiftLLreg x y z)
+-(TEQ x (SRL y z)) -> (TEQshiftRLreg x y z)
+-(TEQ x (SRA y z)) -> (TEQshiftRAreg x y z)
+-(CMN x (SLLconst [c] y)) -> (CMNshiftLL x y [c])
+-(CMN x (SRLconst [c] y)) -> (CMNshiftRL x y [c])
+-(CMN x (SRAconst [c] y)) -> (CMNshiftRA x y [c])
+-(CMN x (SLL y z)) -> (CMNshiftLLreg x y z)
+-(CMN x (SRL y z)) -> (CMNshiftRLreg x y z)
+-(CMN x (SRA y z)) -> (CMNshiftRAreg x y z)
 +(ADD x (SRLconst [c] y)) => (ADDshiftRL x y [c])
 +(ADD x (SRAconst [c] y)) => (ADDshiftRA x y [c])
 +(ADD x (SLL y z)) => (ADDshiftLLreg x y z)
@@ -253,9 +284,44 @@ index dc490bd764..ba4535855d 100644
 +(MVN (SLL x y)) => (MVNshiftLLreg x y)
 +(MVN (SRL x y)) => (MVNshiftRLreg x y)
 +(MVN (SRA x y)) => (MVNshiftRAreg x y)
++
++(CMP x (SLLconst [c] y)) => (CMPshiftLL x y [c])
++(CMP (SLLconst [c] y) x) => (InvertFlags (CMPshiftLL x y [c]))
++(CMP x (SRLconst [c] y)) => (CMPshiftRL x y [c])
++(CMP (SRLconst [c] y) x) => (InvertFlags (CMPshiftRL x y [c]))
++(CMP x (SRAconst [c] y)) => (CMPshiftRA x y [c])
++(CMP (SRAconst [c] y) x) => (InvertFlags (CMPshiftRA x y [c]))
++(CMP x (SLL y z)) => (CMPshiftLLreg x y z)
++(CMP (SLL y z) x) => (InvertFlags (CMPshiftLLreg x y z))
++(CMP x (SRL y z)) => (CMPshiftRLreg x y z)
++(CMP (SRL y z) x) => (InvertFlags (CMPshiftRLreg x y z))
++(CMP x (SRA y z)) => (CMPshiftRAreg x y z)
++(CMP (SRA y z) x) => (InvertFlags (CMPshiftRAreg x y z))
++(TST x (SLLconst [c] y)) => (TSTshiftLL x y [c])
++(TST x (SRLconst [c] y)) => (TSTshiftRL x y [c])
++(TST x (SRAconst [c] y)) => (TSTshiftRA x y [c])
++(TST x (SLL y z)) => (TSTshiftLLreg x y z)
++(TST x (SRL y z)) => (TSTshiftRLreg x y z)
++(TST x (SRA y z)) => (TSTshiftRAreg x y z)
++(TEQ x (SLLconst [c] y)) => (TEQshiftLL x y [c])
++(TEQ x (SRLconst [c] y)) => (TEQshiftRL x y [c])
++(TEQ x (SRAconst [c] y)) => (TEQshiftRA x y [c])
++(TEQ x (SLL y z)) => (TEQshiftLLreg x y z)
++(TEQ x (SRL y z)) => (TEQshiftRLreg x y z)
++(TEQ x (SRA y z)) => (TEQshiftRAreg x y z)
++(CMN x (SLLconst [c] y)) => (CMNshiftLL x y [c])
++(CMN x (SRLconst [c] y)) => (CMNshiftRL x y [c])
++(CMN x (SRAconst [c] y)) => (CMNshiftRA x y [c])
++(CMN x (SLL y z)) => (CMNshiftLLreg x y z)
++(CMN x (SRL y z)) => (CMNshiftRLreg x y z)
++(CMN x (SRA y z)) => (CMNshiftRAreg x y z)
  
- (CMP x (SLLconst [c] y)) -> (CMPshiftLL x y [c])
- (CMP (SLLconst [c] y) x) -> (InvertFlags (CMPshiftLL x y [c]))
+ // prefer *const ops to *shift ops
+-(ADDshiftLL (MOVWconst [c]) x [d]) -> (ADDconst [c] (SLLconst <x.Type> x [d]))
++(ADDshiftLL (MOVWconst [c]) x [d]) => (ADDconst [c] (SLLconst <x.Type> x [d]))
+ (ADDshiftRL (MOVWconst [c]) x [d]) -> (ADDconst [c] (SRLconst <x.Type> x [d]))
+ (ADDshiftRA (MOVWconst [c]) x [d]) -> (ADDconst [c] (SRAconst <x.Type> x [d]))
+ (ADCshiftLL (MOVWconst [c]) x [d] flags) -> (ADCconst [c] (SLLconst <x.Type> x [d]) flags)
 -- 
 2.22.0.windows.1
 
