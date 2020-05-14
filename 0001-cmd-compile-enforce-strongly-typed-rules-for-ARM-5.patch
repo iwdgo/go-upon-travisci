@@ -1,21 +1,21 @@
-From dc7600572ddab37a94769ab8ca6835b531fab2a8 Mon Sep 17 00:00:00 2001
+From f7d3264acb0ab4b25e22d52c62ac0ee444b6f6c3 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
 
 ! one line missing
 
-From "absorb InvertFlags..." until ...
-L770-
-Toolstash-check...
+From "absorb InvertFlags..." until "constant folding in *shift ops"
+(L770-L1095)
+Toolstash-check is successful.
 
 Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 362 ++++++++++-----------
- 1 file changed, 181 insertions(+), 181 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 460 ++++++++++-----------
+ 1 file changed, 230 insertions(+), 230 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..b5f6e56876 100644
+index dc490bd764..c069933c9f 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -767,7 +767,7 @@
@@ -57,7 +57,7 @@ index dc490bd764..b5f6e56876 100644
  (SUBconst [0] x) -> x
  (ANDconst [0] _) -> (MOVWconst [0])
  (ANDconst [c] x) && int32(c)==-1 -> x
-@@ -866,184 +866,184 @@
+@@ -866,233 +866,233 @@
  
  // absorb shifts into ops
  (ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
@@ -366,6 +366,55 @@ index dc490bd764..b5f6e56876 100644
 -(CMNshiftLL (MOVWconst [c]) x [d]) -> (CMNconst [c] (SLLconst <x.Type> x [d]))
 -(CMNshiftRL (MOVWconst [c]) x [d]) -> (CMNconst [c] (SRLconst <x.Type> x [d]))
 -(CMNshiftRA (MOVWconst [c]) x [d]) -> (CMNconst [c] (SRAconst <x.Type> x [d]))
+-
+-(ADDshiftLLreg (MOVWconst [c]) x y) -> (ADDconst [c] (SLL <x.Type> x y))
+-(ADDshiftRLreg (MOVWconst [c]) x y) -> (ADDconst [c] (SRL <x.Type> x y))
+-(ADDshiftRAreg (MOVWconst [c]) x y) -> (ADDconst [c] (SRA <x.Type> x y))
+-(ADCshiftLLreg (MOVWconst [c]) x y flags) -> (ADCconst [c] (SLL <x.Type> x y) flags)
+-(ADCshiftRLreg (MOVWconst [c]) x y flags) -> (ADCconst [c] (SRL <x.Type> x y) flags)
+-(ADCshiftRAreg (MOVWconst [c]) x y flags) -> (ADCconst [c] (SRA <x.Type> x y) flags)
+-(ADDSshiftLLreg (MOVWconst [c]) x y) -> (ADDSconst [c] (SLL <x.Type> x y))
+-(ADDSshiftRLreg (MOVWconst [c]) x y) -> (ADDSconst [c] (SRL <x.Type> x y))
+-(ADDSshiftRAreg (MOVWconst [c]) x y) -> (ADDSconst [c] (SRA <x.Type> x y))
+-(SUBshiftLLreg (MOVWconst [c]) x y) -> (RSBconst [c] (SLL <x.Type> x y))
+-(SUBshiftRLreg (MOVWconst [c]) x y) -> (RSBconst [c] (SRL <x.Type> x y))
+-(SUBshiftRAreg (MOVWconst [c]) x y) -> (RSBconst [c] (SRA <x.Type> x y))
+-(SBCshiftLLreg (MOVWconst [c]) x y flags) -> (RSCconst [c] (SLL <x.Type> x y) flags)
+-(SBCshiftRLreg (MOVWconst [c]) x y flags) -> (RSCconst [c] (SRL <x.Type> x y) flags)
+-(SBCshiftRAreg (MOVWconst [c]) x y flags) -> (RSCconst [c] (SRA <x.Type> x y) flags)
+-(SUBSshiftLLreg (MOVWconst [c]) x y) -> (RSBSconst [c] (SLL <x.Type> x y))
+-(SUBSshiftRLreg (MOVWconst [c]) x y) -> (RSBSconst [c] (SRL <x.Type> x y))
+-(SUBSshiftRAreg (MOVWconst [c]) x y) -> (RSBSconst [c] (SRA <x.Type> x y))
+-(RSBshiftLLreg (MOVWconst [c]) x y) -> (SUBconst [c] (SLL <x.Type> x y))
+-(RSBshiftRLreg (MOVWconst [c]) x y) -> (SUBconst [c] (SRL <x.Type> x y))
+-(RSBshiftRAreg (MOVWconst [c]) x y) -> (SUBconst [c] (SRA <x.Type> x y))
+-(RSCshiftLLreg (MOVWconst [c]) x y flags) -> (SBCconst [c] (SLL <x.Type> x y) flags)
+-(RSCshiftRLreg (MOVWconst [c]) x y flags) -> (SBCconst [c] (SRL <x.Type> x y) flags)
+-(RSCshiftRAreg (MOVWconst [c]) x y flags) -> (SBCconst [c] (SRA <x.Type> x y) flags)
+-(RSBSshiftLLreg (MOVWconst [c]) x y) -> (SUBSconst [c] (SLL <x.Type> x y))
+-(RSBSshiftRLreg (MOVWconst [c]) x y) -> (SUBSconst [c] (SRL <x.Type> x y))
+-(RSBSshiftRAreg (MOVWconst [c]) x y) -> (SUBSconst [c] (SRA <x.Type> x y))
+-(ANDshiftLLreg (MOVWconst [c]) x y) -> (ANDconst [c] (SLL <x.Type> x y))
+-(ANDshiftRLreg (MOVWconst [c]) x y) -> (ANDconst [c] (SRL <x.Type> x y))
+-(ANDshiftRAreg (MOVWconst [c]) x y) -> (ANDconst [c] (SRA <x.Type> x y))
+-(ORshiftLLreg (MOVWconst [c]) x y) -> (ORconst [c] (SLL <x.Type> x y))
+-(ORshiftRLreg (MOVWconst [c]) x y) -> (ORconst [c] (SRL <x.Type> x y))
+-(ORshiftRAreg (MOVWconst [c]) x y) -> (ORconst [c] (SRA <x.Type> x y))
+-(XORshiftLLreg (MOVWconst [c]) x y) -> (XORconst [c] (SLL <x.Type> x y))
+-(XORshiftRLreg (MOVWconst [c]) x y) -> (XORconst [c] (SRL <x.Type> x y))
+-(XORshiftRAreg (MOVWconst [c]) x y) -> (XORconst [c] (SRA <x.Type> x y))
+-(CMPshiftLLreg (MOVWconst [c]) x y) -> (InvertFlags (CMPconst [c] (SLL <x.Type> x y)))
+-(CMPshiftRLreg (MOVWconst [c]) x y) -> (InvertFlags (CMPconst [c] (SRL <x.Type> x y)))
+-(CMPshiftRAreg (MOVWconst [c]) x y) -> (InvertFlags (CMPconst [c] (SRA <x.Type> x y)))
+-(TSTshiftLLreg (MOVWconst [c]) x y) -> (TSTconst [c] (SLL <x.Type> x y))
+-(TSTshiftRLreg (MOVWconst [c]) x y) -> (TSTconst [c] (SRL <x.Type> x y))
+-(TSTshiftRAreg (MOVWconst [c]) x y) -> (TSTconst [c] (SRA <x.Type> x y))
+-(TEQshiftLLreg (MOVWconst [c]) x y) -> (TEQconst [c] (SLL <x.Type> x y))
+-(TEQshiftRLreg (MOVWconst [c]) x y) -> (TEQconst [c] (SRL <x.Type> x y))
+-(TEQshiftRAreg (MOVWconst [c]) x y) -> (TEQconst [c] (SRA <x.Type> x y))
+-(CMNshiftLLreg (MOVWconst [c]) x y) -> (CMNconst [c] (SLL <x.Type> x y))
+-(CMNshiftRLreg (MOVWconst [c]) x y) -> (CMNconst [c] (SRL <x.Type> x y))
+-(CMNshiftRAreg (MOVWconst [c]) x y) -> (CMNconst [c] (SRA <x.Type> x y))
 +(ADDshiftLL (MOVWconst [c]) x [d]) => (ADDconst [c] (SLLconst <x.Type> x [d]))
 +(ADDshiftRL (MOVWconst [c]) x [d]) => (ADDconst [c] (SRLconst <x.Type> x [d]))
 +(ADDshiftRA (MOVWconst [c]) x [d]) => (ADDconst [c] (SRAconst <x.Type> x [d]))
@@ -415,9 +464,58 @@ index dc490bd764..b5f6e56876 100644
 +(CMNshiftLL (MOVWconst [c]) x [d]) => (CMNconst [c] (SLLconst <x.Type> x [d]))
 +(CMNshiftRL (MOVWconst [c]) x [d]) => (CMNconst [c] (SRLconst <x.Type> x [d]))
 +(CMNshiftRA (MOVWconst [c]) x [d]) => (CMNconst [c] (SRAconst <x.Type> x [d]))
++
++(ADDshiftLLreg (MOVWconst [c]) x y) => (ADDconst [c] (SLL <x.Type> x y))
++(ADDshiftRLreg (MOVWconst [c]) x y) => (ADDconst [c] (SRL <x.Type> x y))
++(ADDshiftRAreg (MOVWconst [c]) x y) => (ADDconst [c] (SRA <x.Type> x y))
++(ADCshiftLLreg (MOVWconst [c]) x y flags) => (ADCconst [c] (SLL <x.Type> x y) flags)
++(ADCshiftRLreg (MOVWconst [c]) x y flags) => (ADCconst [c] (SRL <x.Type> x y) flags)
++(ADCshiftRAreg (MOVWconst [c]) x y flags) => (ADCconst [c] (SRA <x.Type> x y) flags)
++(ADDSshiftLLreg (MOVWconst [c]) x y) => (ADDSconst [c] (SLL <x.Type> x y))
++(ADDSshiftRLreg (MOVWconst [c]) x y) => (ADDSconst [c] (SRL <x.Type> x y))
++(ADDSshiftRAreg (MOVWconst [c]) x y) => (ADDSconst [c] (SRA <x.Type> x y))
++(SUBshiftLLreg (MOVWconst [c]) x y) => (RSBconst [c] (SLL <x.Type> x y))
++(SUBshiftRLreg (MOVWconst [c]) x y) => (RSBconst [c] (SRL <x.Type> x y))
++(SUBshiftRAreg (MOVWconst [c]) x y) => (RSBconst [c] (SRA <x.Type> x y))
++(SBCshiftLLreg (MOVWconst [c]) x y flags) => (RSCconst [c] (SLL <x.Type> x y) flags)
++(SBCshiftRLreg (MOVWconst [c]) x y flags) => (RSCconst [c] (SRL <x.Type> x y) flags)
++(SBCshiftRAreg (MOVWconst [c]) x y flags) => (RSCconst [c] (SRA <x.Type> x y) flags)
++(SUBSshiftLLreg (MOVWconst [c]) x y) => (RSBSconst [c] (SLL <x.Type> x y))
++(SUBSshiftRLreg (MOVWconst [c]) x y) => (RSBSconst [c] (SRL <x.Type> x y))
++(SUBSshiftRAreg (MOVWconst [c]) x y) => (RSBSconst [c] (SRA <x.Type> x y))
++(RSBshiftLLreg (MOVWconst [c]) x y) => (SUBconst [c] (SLL <x.Type> x y))
++(RSBshiftRLreg (MOVWconst [c]) x y) => (SUBconst [c] (SRL <x.Type> x y))
++(RSBshiftRAreg (MOVWconst [c]) x y) => (SUBconst [c] (SRA <x.Type> x y))
++(RSCshiftLLreg (MOVWconst [c]) x y flags) => (SBCconst [c] (SLL <x.Type> x y) flags)
++(RSCshiftRLreg (MOVWconst [c]) x y flags) => (SBCconst [c] (SRL <x.Type> x y) flags)
++(RSCshiftRAreg (MOVWconst [c]) x y flags) => (SBCconst [c] (SRA <x.Type> x y) flags)
++(RSBSshiftLLreg (MOVWconst [c]) x y) => (SUBSconst [c] (SLL <x.Type> x y))
++(RSBSshiftRLreg (MOVWconst [c]) x y) => (SUBSconst [c] (SRL <x.Type> x y))
++(RSBSshiftRAreg (MOVWconst [c]) x y) => (SUBSconst [c] (SRA <x.Type> x y))
++(ANDshiftLLreg (MOVWconst [c]) x y) => (ANDconst [c] (SLL <x.Type> x y))
++(ANDshiftRLreg (MOVWconst [c]) x y) => (ANDconst [c] (SRL <x.Type> x y))
++(ANDshiftRAreg (MOVWconst [c]) x y) => (ANDconst [c] (SRA <x.Type> x y))
++(ORshiftLLreg (MOVWconst [c]) x y) => (ORconst [c] (SLL <x.Type> x y))
++(ORshiftRLreg (MOVWconst [c]) x y) => (ORconst [c] (SRL <x.Type> x y))
++(ORshiftRAreg (MOVWconst [c]) x y) => (ORconst [c] (SRA <x.Type> x y))
++(XORshiftLLreg (MOVWconst [c]) x y) => (XORconst [c] (SLL <x.Type> x y))
++(XORshiftRLreg (MOVWconst [c]) x y) => (XORconst [c] (SRL <x.Type> x y))
++(XORshiftRAreg (MOVWconst [c]) x y) => (XORconst [c] (SRA <x.Type> x y))
++(CMPshiftLLreg (MOVWconst [c]) x y) => (InvertFlags (CMPconst [c] (SLL <x.Type> x y)))
++(CMPshiftRLreg (MOVWconst [c]) x y) => (InvertFlags (CMPconst [c] (SRL <x.Type> x y)))
++(CMPshiftRAreg (MOVWconst [c]) x y) => (InvertFlags (CMPconst [c] (SRA <x.Type> x y)))
++(TSTshiftLLreg (MOVWconst [c]) x y) => (TSTconst [c] (SLL <x.Type> x y))
++(TSTshiftRLreg (MOVWconst [c]) x y) => (TSTconst [c] (SRL <x.Type> x y))
++(TSTshiftRAreg (MOVWconst [c]) x y) => (TSTconst [c] (SRA <x.Type> x y))
++(TEQshiftLLreg (MOVWconst [c]) x y) => (TEQconst [c] (SLL <x.Type> x y))
++(TEQshiftRLreg (MOVWconst [c]) x y) => (TEQconst [c] (SRL <x.Type> x y))
++(TEQshiftRAreg (MOVWconst [c]) x y) => (TEQconst [c] (SRA <x.Type> x y))
++(CMNshiftLLreg (MOVWconst [c]) x y) => (CMNconst [c] (SLL <x.Type> x y))
++(CMNshiftRLreg (MOVWconst [c]) x y) => (CMNconst [c] (SRL <x.Type> x y))
++(CMNshiftRAreg (MOVWconst [c]) x y) => (CMNconst [c] (SRA <x.Type> x y))
  
- (ADDshiftLLreg (MOVWconst [c]) x y) -> (ADDconst [c] (SLL <x.Type> x y))
- (ADDshiftRLreg (MOVWconst [c]) x y) -> (ADDconst [c] (SRL <x.Type> x y))
+ // constant folding in *shift ops
+ (ADDshiftLL x (MOVWconst [c]) [d]) => (ADDconst x [c<<uint64(d)])
 -- 
 2.22.0.windows.1
 
