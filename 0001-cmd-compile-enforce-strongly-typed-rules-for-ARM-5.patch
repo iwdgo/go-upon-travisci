@@ -18,7 +18,12 @@ diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/intern
 index dc490bd764..c069933c9f 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -767,7 +767,7 @@
+@@ -762,51 +762,51 @@
+ 
+ (GreaterEqualU (FlagEQ)) => (MOVWconst [1])
+ (GreaterEqualU (FlagLT_ULT)) => (MOVWconst [0])
+ (GreaterEqualU (FlagLT_UGT)) => (MOVWconst [1])
+ (GreaterEqualU (FlagGT_ULT)) => (MOVWconst [0])
  (GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
  
  // absorb InvertFlags into boolean values
@@ -27,7 +32,11 @@ index dc490bd764..c069933c9f 100644
  (NotEqual (InvertFlags x)) -> (NotEqual x)
  (LessThan (InvertFlags x)) -> (GreaterThan x)
  (LessThanU (InvertFlags x)) -> (GreaterThanU x)
-@@ -779,7 +779,7 @@
+ (GreaterThan (InvertFlags x)) -> (LessThan x)
+ (GreaterThanU (InvertFlags x)) -> (LessThanU x)
+ (LessEqual (InvertFlags x)) -> (GreaterEqual x)
+ (LessEqualU (InvertFlags x)) -> (GreaterEqualU x)
+ (GreaterEqual (InvertFlags x)) -> (LessEqual x)
  (GreaterEqualU (InvertFlags x)) -> (LessEqualU x)
  
  // absorb flag constants into conditional instructions
@@ -36,7 +45,11 @@ index dc490bd764..c069933c9f 100644
  (CMOVWLSconst _ (FlagLT_ULT) [c]) -> (MOVWconst [c])
  (CMOVWLSconst x (FlagLT_UGT)) -> x
  (CMOVWLSconst _ (FlagGT_ULT) [c]) -> (MOVWconst [c])
-@@ -791,17 +791,17 @@
+ (CMOVWLSconst x (FlagGT_UGT)) -> x
+ 
+ (CMOVWHSconst _ (FlagEQ) [c]) -> (MOVWconst [c])
+ (CMOVWHSconst x (FlagLT_ULT)) -> x
+ (CMOVWHSconst _ (FlagLT_UGT) [c]) -> (MOVWconst [c])
  (CMOVWHSconst x (FlagGT_ULT)) -> x
  (CMOVWHSconst _ (FlagGT_UGT) [c]) -> (MOVWconst [c])
  
@@ -57,7 +70,17 @@ index dc490bd764..c069933c9f 100644
  (SUBconst [0] x) -> x
  (ANDconst [0] _) -> (MOVWconst [0])
  (ANDconst [c] x) && int32(c)==-1 -> x
-@@ -866,233 +866,233 @@
+ (ORconst [0] x) -> x
+ (ORconst [c] _) && int32(c)==-1 -> (MOVWconst [-1])
+ (XORconst [0] x) -> x
+ (BICconst [0] x) -> x
+ (BICconst [c] _) && int32(c)==-1 -> (MOVWconst [0])
+@@ -861,243 +861,243 @@
+ (MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
+ (MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
+ // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
+ (BFX [c] (MOVWconst [d])) => (MOVWconst [d<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))])
+ (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
  
  // absorb shifts into ops
  (ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
@@ -516,6 +539,11 @@ index dc490bd764..c069933c9f 100644
  
  // constant folding in *shift ops
  (ADDshiftLL x (MOVWconst [c]) [d]) => (ADDconst x [c<<uint64(d)])
+ (ADDshiftRL x (MOVWconst [c]) [d]) => (ADDconst x [int32(uint32(c)>>uint64(d))])
+ (ADDshiftRA x (MOVWconst [c]) [d]) => (ADDconst x [c>>uint64(d)])
+ (ADCshiftLL x (MOVWconst [c]) [d] flags) => (ADCconst x [c<<uint64(d)] flags)
+ (ADCshiftRL x (MOVWconst [c]) [d] flags) => (ADCconst x [int32(uint32(c)>>uint64(d))] flags)
+ (ADCshiftRA x (MOVWconst [c]) [d] flags) => (ADCconst x [c>>uint64(d)] flags)
 -- 
 2.22.0.windows.1
 
