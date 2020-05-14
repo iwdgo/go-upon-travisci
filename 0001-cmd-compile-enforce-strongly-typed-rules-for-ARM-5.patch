@@ -1,0 +1,69 @@
+From 8114ae1cb0b759f6054428135f98d8764e58125a Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Thu, 14 May 2020 07:43:01 +0200
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
+
+From "absorb InvertFlags..." until ...
+L770-
+Toolstash-check...
+
+Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index dc490bd764..52df43d098 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -767,7 +767,7 @@
+ (GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
+ 
+ // absorb InvertFlags into boolean values
+-(Equal (InvertFlags x)) -> (Equal x)
++(Equal (InvertFlags x)) => (Equal x)
+ (NotEqual (InvertFlags x)) -> (NotEqual x)
+ (LessThan (InvertFlags x)) -> (GreaterThan x)
+ (LessThanU (InvertFlags x)) -> (GreaterThanU x)
+@@ -779,7 +779,7 @@
+ (GreaterEqualU (InvertFlags x)) -> (LessEqualU x)
+ 
+ // absorb flag constants into conditional instructions
+-(CMOVWLSconst _ (FlagEQ) [c]) -> (MOVWconst [c])
++(CMOVWLSconst _ (FlagEQ) [c]) => (MOVWconst [c])
+ (CMOVWLSconst _ (FlagLT_ULT) [c]) -> (MOVWconst [c])
+ (CMOVWLSconst x (FlagLT_UGT)) -> x
+ (CMOVWLSconst _ (FlagGT_ULT) [c]) -> (MOVWconst [c])
+@@ -791,17 +791,17 @@
+ (CMOVWHSconst x (FlagGT_ULT)) -> x
+ (CMOVWHSconst _ (FlagGT_UGT) [c]) -> (MOVWconst [c])
+ 
+-(CMOVWLSconst x (InvertFlags flags) [c]) -> (CMOVWHSconst x flags [c])
++(CMOVWLSconst x (InvertFlags flags) [c]) => (CMOVWHSconst x flags [c])
+ (CMOVWHSconst x (InvertFlags flags) [c]) -> (CMOVWLSconst x flags [c])
+ 
+-(SRAcond x _ (FlagEQ)) -> (SRAconst x [31])
++(SRAcond x _ (FlagEQ)) => (SRAconst x [31])
+ (SRAcond x y (FlagLT_ULT)) -> (SRA x y)
+ (SRAcond x _ (FlagLT_UGT)) -> (SRAconst x [31])
+ (SRAcond x y (FlagGT_ULT)) -> (SRA x y)
+ (SRAcond x _ (FlagGT_UGT)) -> (SRAconst x [31])
+ 
+ // remove redundant *const ops
+-(ADDconst [0] x) -> x
++(ADDconst [0] x) => x
+ (SUBconst [0] x) -> x
+ (ANDconst [0] _) -> (MOVWconst [0])
+ (ANDconst [c] x) && int32(c)==-1 -> x
+@@ -865,7 +865,7 @@
+ (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
+ 
+ // absorb shifts into ops
+-(ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
++(ADD x (SLLconst [c] y)) => (ADDshiftLL x y [c])
+ (ADD x (SRLconst [c] y)) -> (ADDshiftRL x y [c])
+ (ADD x (SRAconst [c] y)) -> (ADDshiftRA x y [c])
+ (ADD x (SLL y z)) -> (ADDshiftLLreg x y z)
+-- 
+2.22.0.windows.1
+
