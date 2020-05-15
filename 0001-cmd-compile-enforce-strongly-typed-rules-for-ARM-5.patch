@@ -1,4 +1,4 @@
-From 8d54e9e1fd0f142d9e18cda8e9a21f63bf8a628d Mon Sep 17 00:00:00 2001
+From ee473a8da905eebcb2dde8cc2aea189ad161a840 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
@@ -9,15 +9,157 @@ Toolstash-check is successful.
 
 Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 530 ++++++++++-----------
- 1 file changed, 265 insertions(+), 265 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 668 ++++++++++-----------
+ 1 file changed, 334 insertions(+), 334 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..74564de9f8 100644
+index a8cea68c5f..1c9f31f90f 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -767,49 +767,49 @@
- (GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
+@@ -694,122 +694,122 @@
+ (UGE (FlagGT_UGT) yes no) -> (First yes no)
+ 
+ // absorb InvertFlags into branches
+-(LT (InvertFlags cmp) yes no) -> (GT cmp yes no)
+-(GT (InvertFlags cmp) yes no) -> (LT cmp yes no)
+-(LE (InvertFlags cmp) yes no) -> (GE cmp yes no)
+-(GE (InvertFlags cmp) yes no) -> (LE cmp yes no)
+-(ULT (InvertFlags cmp) yes no) -> (UGT cmp yes no)
+-(UGT (InvertFlags cmp) yes no) -> (ULT cmp yes no)
+-(ULE (InvertFlags cmp) yes no) -> (UGE cmp yes no)
+-(UGE (InvertFlags cmp) yes no) -> (ULE cmp yes no)
+-(EQ (InvertFlags cmp) yes no) -> (EQ cmp yes no)
+-(NE (InvertFlags cmp) yes no) -> (NE cmp yes no)
++(LT (InvertFlags cmp) yes no) => (GT cmp yes no)
++(GT (InvertFlags cmp) yes no) => (LT cmp yes no)
++(LE (InvertFlags cmp) yes no) => (GE cmp yes no)
++(GE (InvertFlags cmp) yes no) => (LE cmp yes no)
++(ULT (InvertFlags cmp) yes no) => (UGT cmp yes no)
++(UGT (InvertFlags cmp) yes no) => (ULT cmp yes no)
++(ULE (InvertFlags cmp) yes no) => (UGE cmp yes no)
++(UGE (InvertFlags cmp) yes no) => (ULE cmp yes no)
++(EQ (InvertFlags cmp) yes no) => (EQ cmp yes no)
++(NE (InvertFlags cmp) yes no) => (NE cmp yes no)
+ 
+ // absorb flag constants into boolean values
+-(Equal (FlagEQ)) -> (MOVWconst [1])
+-(Equal (FlagLT_ULT)) -> (MOVWconst [0])
+-(Equal (FlagLT_UGT)) -> (MOVWconst [0])
+-(Equal (FlagGT_ULT)) -> (MOVWconst [0])
+-(Equal (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(NotEqual (FlagEQ)) -> (MOVWconst [0])
+-(NotEqual (FlagLT_ULT)) -> (MOVWconst [1])
+-(NotEqual (FlagLT_UGT)) -> (MOVWconst [1])
+-(NotEqual (FlagGT_ULT)) -> (MOVWconst [1])
+-(NotEqual (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(LessThan (FlagEQ)) -> (MOVWconst [0])
+-(LessThan (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessThan (FlagLT_UGT)) -> (MOVWconst [1])
+-(LessThan (FlagGT_ULT)) -> (MOVWconst [0])
+-(LessThan (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(LessThanU (FlagEQ)) -> (MOVWconst [0])
+-(LessThanU (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessThanU (FlagLT_UGT)) -> (MOVWconst [0])
+-(LessThanU (FlagGT_ULT)) -> (MOVWconst [1])
+-(LessThanU (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(LessEqual (FlagEQ)) -> (MOVWconst [1])
+-(LessEqual (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessEqual (FlagLT_UGT)) -> (MOVWconst [1])
+-(LessEqual (FlagGT_ULT)) -> (MOVWconst [0])
+-(LessEqual (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(LessEqualU (FlagEQ)) -> (MOVWconst [1])
+-(LessEqualU (FlagLT_ULT)) -> (MOVWconst [1])
+-(LessEqualU (FlagLT_UGT)) -> (MOVWconst [0])
+-(LessEqualU (FlagGT_ULT)) -> (MOVWconst [1])
+-(LessEqualU (FlagGT_UGT)) -> (MOVWconst [0])
+-
+-(GreaterThan (FlagEQ)) -> (MOVWconst [0])
+-(GreaterThan (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterThan (FlagLT_UGT)) -> (MOVWconst [0])
+-(GreaterThan (FlagGT_ULT)) -> (MOVWconst [1])
+-(GreaterThan (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(GreaterThanU (FlagEQ)) -> (MOVWconst [0])
+-(GreaterThanU (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterThanU (FlagLT_UGT)) -> (MOVWconst [1])
+-(GreaterThanU (FlagGT_ULT)) -> (MOVWconst [0])
+-(GreaterThanU (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(GreaterEqual (FlagEQ)) -> (MOVWconst [1])
+-(GreaterEqual (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterEqual (FlagLT_UGT)) -> (MOVWconst [0])
+-(GreaterEqual (FlagGT_ULT)) -> (MOVWconst [1])
+-(GreaterEqual (FlagGT_UGT)) -> (MOVWconst [1])
+-
+-(GreaterEqualU (FlagEQ)) -> (MOVWconst [1])
+-(GreaterEqualU (FlagLT_ULT)) -> (MOVWconst [0])
+-(GreaterEqualU (FlagLT_UGT)) -> (MOVWconst [1])
+-(GreaterEqualU (FlagGT_ULT)) -> (MOVWconst [0])
+-(GreaterEqualU (FlagGT_UGT)) -> (MOVWconst [1])
++(Equal (FlagEQ)) => (MOVWconst [1])
++(Equal (FlagLT_ULT)) => (MOVWconst [0])
++(Equal (FlagLT_UGT)) => (MOVWconst [0])
++(Equal (FlagGT_ULT)) => (MOVWconst [0])
++(Equal (FlagGT_UGT)) => (MOVWconst [0])
++
++(NotEqual (FlagEQ)) => (MOVWconst [0])
++(NotEqual (FlagLT_ULT)) => (MOVWconst [1])
++(NotEqual (FlagLT_UGT)) => (MOVWconst [1])
++(NotEqual (FlagGT_ULT)) => (MOVWconst [1])
++(NotEqual (FlagGT_UGT)) => (MOVWconst [1])
++
++(LessThan (FlagEQ)) => (MOVWconst [0])
++(LessThan (FlagLT_ULT)) => (MOVWconst [1])
++(LessThan (FlagLT_UGT)) => (MOVWconst [1])
++(LessThan (FlagGT_ULT)) => (MOVWconst [0])
++(LessThan (FlagGT_UGT)) => (MOVWconst [0])
++
++(LessThanU (FlagEQ)) => (MOVWconst [0])
++(LessThanU (FlagLT_ULT)) => (MOVWconst [1])
++(LessThanU (FlagLT_UGT)) => (MOVWconst [0])
++(LessThanU (FlagGT_ULT)) => (MOVWconst [1])
++(LessThanU (FlagGT_UGT)) => (MOVWconst [0])
++
++(LessEqual (FlagEQ)) => (MOVWconst [1])
++(LessEqual (FlagLT_ULT)) => (MOVWconst [1])
++(LessEqual (FlagLT_UGT)) => (MOVWconst [1])
++(LessEqual (FlagGT_ULT)) => (MOVWconst [0])
++(LessEqual (FlagGT_UGT)) => (MOVWconst [0])
++
++(LessEqualU (FlagEQ)) => (MOVWconst [1])
++(LessEqualU (FlagLT_ULT)) => (MOVWconst [1])
++(LessEqualU (FlagLT_UGT)) => (MOVWconst [0])
++(LessEqualU (FlagGT_ULT)) => (MOVWconst [1])
++(LessEqualU (FlagGT_UGT)) => (MOVWconst [0])
++
++(GreaterThan (FlagEQ)) => (MOVWconst [0])
++(GreaterThan (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterThan (FlagLT_UGT)) => (MOVWconst [0])
++(GreaterThan (FlagGT_ULT)) => (MOVWconst [1])
++(GreaterThan (FlagGT_UGT)) => (MOVWconst [1])
++
++(GreaterThanU (FlagEQ)) => (MOVWconst [0])
++(GreaterThanU (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterThanU (FlagLT_UGT)) => (MOVWconst [1])
++(GreaterThanU (FlagGT_ULT)) => (MOVWconst [0])
++(GreaterThanU (FlagGT_UGT)) => (MOVWconst [1])
++
++(GreaterEqual (FlagEQ)) => (MOVWconst [1])
++(GreaterEqual (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterEqual (FlagLT_UGT)) => (MOVWconst [0])
++(GreaterEqual (FlagGT_ULT)) => (MOVWconst [1])
++(GreaterEqual (FlagGT_UGT)) => (MOVWconst [1])
++
++(GreaterEqualU (FlagEQ)) => (MOVWconst [1])
++(GreaterEqualU (FlagLT_ULT)) => (MOVWconst [0])
++(GreaterEqualU (FlagLT_UGT)) => (MOVWconst [1])
++(GreaterEqualU (FlagGT_ULT)) => (MOVWconst [0])
++(GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
  
  // absorb InvertFlags into boolean values
 -(Equal (InvertFlags x)) -> (Equal x)
@@ -104,9 +246,9 @@ index dc490bd764..74564de9f8 100644
 +(BICconst [c] _) && int32(c)==-1 => (MOVWconst [0])
  
  // generic constant folding
- (ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [-c] x)
+ (ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) -> (SUBconst [int64(int32(-c))] x)
 @@ -865,234 +865,234 @@
- (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
+ (BFXU [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))))])
  
  // absorb shifts into ops
 -(ADD x (SLLconst [c] y)) -> (ADDshiftLL x y [c])
@@ -565,7 +707,7 @@ index dc490bd764..74564de9f8 100644
 +(CMNshiftRAreg (MOVWconst [c]) x y) => (CMNconst [c] (SRA <x.Type> x y))
  
  // constant folding in *shift ops
- (ADDshiftLL x (MOVWconst [c]) [d]) => (ADDconst x [c<<uint64(d)])
+ (ADDshiftLL x (MOVWconst [c]) [d]) -> (ADDconst x [int64(int32(uint32(c)<<uint64(d)))])
 -- 
 2.22.0.windows.1
 
