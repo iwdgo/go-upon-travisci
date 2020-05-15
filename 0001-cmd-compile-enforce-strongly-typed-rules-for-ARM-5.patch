@@ -1,21 +1,110 @@
-From b4be8116fcf2421a6e6f84ed3ab6bccaba0f6987 Mon Sep 17 00:00:00 2001
+From 23fc83e097fdd12eff9f29a3c3e88502da9d9856 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
 
-From "absorb shifts into ops" until "constant folding in *shift ops"
-(L834-L1095)
+From "absorb invert flags" until "constant folding in *shift ops"
+(L769-L812 and L834-L1095)
 Toolstash-check is successful.
 
 Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 452 ++++++++++-----------
- 1 file changed, 226 insertions(+), 226 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 530 ++++++++++-----------
+ 1 file changed, 265 insertions(+), 265 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..77e96924ad 100644
+index dc490bd764..74564de9f8 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -767,49 +767,49 @@
+ (GreaterEqualU (FlagGT_UGT)) => (MOVWconst [1])
+ 
+ // absorb InvertFlags into boolean values
+-(Equal (InvertFlags x)) -> (Equal x)
+-(NotEqual (InvertFlags x)) -> (NotEqual x)
+-(LessThan (InvertFlags x)) -> (GreaterThan x)
+-(LessThanU (InvertFlags x)) -> (GreaterThanU x)
+-(GreaterThan (InvertFlags x)) -> (LessThan x)
+-(GreaterThanU (InvertFlags x)) -> (LessThanU x)
+-(LessEqual (InvertFlags x)) -> (GreaterEqual x)
+-(LessEqualU (InvertFlags x)) -> (GreaterEqualU x)
+-(GreaterEqual (InvertFlags x)) -> (LessEqual x)
+-(GreaterEqualU (InvertFlags x)) -> (LessEqualU x)
++(Equal (InvertFlags x)) => (Equal x)
++(NotEqual (InvertFlags x)) => (NotEqual x)
++(LessThan (InvertFlags x)) => (GreaterThan x)
++(LessThanU (InvertFlags x)) => (GreaterThanU x)
++(GreaterThan (InvertFlags x)) => (LessThan x)
++(GreaterThanU (InvertFlags x)) => (LessThanU x)
++(LessEqual (InvertFlags x)) => (GreaterEqual x)
++(LessEqualU (InvertFlags x)) => (GreaterEqualU x)
++(GreaterEqual (InvertFlags x)) => (LessEqual x)
++(GreaterEqualU (InvertFlags x)) => (LessEqualU x)
+ 
+ // absorb flag constants into conditional instructions
+-(CMOVWLSconst _ (FlagEQ) [c]) -> (MOVWconst [c])
+-(CMOVWLSconst _ (FlagLT_ULT) [c]) -> (MOVWconst [c])
+-(CMOVWLSconst x (FlagLT_UGT)) -> x
+-(CMOVWLSconst _ (FlagGT_ULT) [c]) -> (MOVWconst [c])
+-(CMOVWLSconst x (FlagGT_UGT)) -> x
+-
+-(CMOVWHSconst _ (FlagEQ) [c]) -> (MOVWconst [c])
+-(CMOVWHSconst x (FlagLT_ULT)) -> x
+-(CMOVWHSconst _ (FlagLT_UGT) [c]) -> (MOVWconst [c])
+-(CMOVWHSconst x (FlagGT_ULT)) -> x
+-(CMOVWHSconst _ (FlagGT_UGT) [c]) -> (MOVWconst [c])
+-
+-(CMOVWLSconst x (InvertFlags flags) [c]) -> (CMOVWHSconst x flags [c])
+-(CMOVWHSconst x (InvertFlags flags) [c]) -> (CMOVWLSconst x flags [c])
+-
+-(SRAcond x _ (FlagEQ)) -> (SRAconst x [31])
+-(SRAcond x y (FlagLT_ULT)) -> (SRA x y)
+-(SRAcond x _ (FlagLT_UGT)) -> (SRAconst x [31])
+-(SRAcond x y (FlagGT_ULT)) -> (SRA x y)
+-(SRAcond x _ (FlagGT_UGT)) -> (SRAconst x [31])
++(CMOVWLSconst _ (FlagEQ) [c]) => (MOVWconst [c])
++(CMOVWLSconst _ (FlagLT_ULT) [c]) => (MOVWconst [c])
++(CMOVWLSconst x (FlagLT_UGT)) => x
++(CMOVWLSconst _ (FlagGT_ULT) [c]) => (MOVWconst [c])
++(CMOVWLSconst x (FlagGT_UGT)) => x
++
++(CMOVWHSconst _ (FlagEQ) [c]) => (MOVWconst [c])
++(CMOVWHSconst x (FlagLT_ULT)) => x
++(CMOVWHSconst _ (FlagLT_UGT) [c]) => (MOVWconst [c])
++(CMOVWHSconst x (FlagGT_ULT)) => x
++(CMOVWHSconst _ (FlagGT_UGT) [c]) => (MOVWconst [c])
++
++(CMOVWLSconst x (InvertFlags flags) [c]) => (CMOVWHSconst x flags [c])
++(CMOVWHSconst x (InvertFlags flags) [c]) => (CMOVWLSconst x flags [c])
++
++(SRAcond x _ (FlagEQ)) => (SRAconst x [31])
++(SRAcond x y (FlagLT_ULT)) => (SRA x y)
++(SRAcond x _ (FlagLT_UGT)) => (SRAconst x [31])
++(SRAcond x y (FlagGT_ULT)) => (SRA x y)
++(SRAcond x _ (FlagGT_UGT)) => (SRAconst x [31])
+ 
+ // remove redundant *const ops
+-(ADDconst [0] x) -> x
+-(SUBconst [0] x) -> x
+-(ANDconst [0] _) -> (MOVWconst [0])
+-(ANDconst [c] x) && int32(c)==-1 -> x
+-(ORconst [0] x) -> x
+-(ORconst [c] _) && int32(c)==-1 -> (MOVWconst [-1])
+-(XORconst [0] x) -> x
+-(BICconst [0] x) -> x
+-(BICconst [c] _) && int32(c)==-1 -> (MOVWconst [0])
++(ADDconst [0] x) => x
++(SUBconst [0] x) => x
++(ANDconst [0] _) => (MOVWconst [0])
++(ANDconst [c] x) && int32(c)==-1 => x
++(ORconst [0] x) => x
++(ORconst [c] _) && int32(c)==-1 => (MOVWconst [-1])
++(XORconst [0] x) => x
++(BICconst [0] x) => x
++(BICconst [c] _) && int32(c)==-1 => (MOVWconst [0])
+ 
+ // generic constant folding
+ (ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [-c] x)
 @@ -865,234 +865,234 @@
  (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
  
