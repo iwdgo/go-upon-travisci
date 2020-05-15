@@ -1,19 +1,19 @@
-From 629b9860f994633f5587237c6c5071f4d0ff30c9 Mon Sep 17 00:00:00 2001
+From 0bcabb290995d63f2959706b61d2e98f5236a8b3 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 15 May 2020 20:35:00 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (6)
 
 End of "constant folding in *shift ops" until EOF
-(L1154-L...)
+(L1154-)
 Toolstash-check is ...
 
 Change-Id: I55846a459aca5238f831750f04132e13a0baeed7
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 304 ++++++++++-----------
- 1 file changed, 152 insertions(+), 152 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 294 ++++++++++-----------
+ 1 file changed, 147 insertions(+), 147 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 74564de9f8..bb55c5992c 100644
+index 74564de9f8..f4e359ee2b 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -1151,72 +1151,72 @@
@@ -153,7 +153,7 @@ index 74564de9f8..bb55c5992c 100644
  (RotateLeft32 x y) -> (SRR x (RSBconst [0] <y.Type> y))
  
  // ((x>>8) | (x<<8)) -> (REV16 x), the type of x is uint16, "|" can also be "^" or "+".
-@@ -1226,73 +1226,73 @@
+@@ -1226,53 +1226,53 @@
  ((ADDshiftLL|ORshiftLL|XORshiftLL) <typ.UInt16> [8] (SRLconst <typ.UInt16> [24] (SLLconst [16] x)) x) && objabi.GOARM>=6 -> (REV16 x)
  
  // use indexed loads and stores
@@ -218,9 +218,6 @@ index 74564de9f8..bb55c5992c 100644
 -(MOVWstoreidx (SRLconst idx [c]) ptr val mem) -> (MOVWstoreshiftRL ptr idx [c] val mem)
 -(MOVWstoreidx ptr (SRAconst idx [c]) val mem) -> (MOVWstoreshiftRA ptr idx [c] val mem)
 -(MOVWstoreidx (SRAconst idx [c]) ptr val mem) -> (MOVWstoreshiftRA ptr idx [c] val mem)
--
--(MOVWloadshiftLL ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(uint32(c)<<uint64(d))] ptr mem)
--(MOVWloadshiftRL ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(uint32(c)>>uint64(d))] ptr mem)
 +(MOVWloadidx ptr (MOVWconst [c]) mem) => (MOVWload [c] ptr mem)
 +(MOVWloadidx (MOVWconst [c]) ptr mem) => (MOVWload [c] ptr mem)
 +(MOVBloadidx ptr (MOVWconst [c]) mem) => (MOVBload [c] ptr mem)
@@ -252,15 +249,10 @@ index 74564de9f8..bb55c5992c 100644
 +(MOVWstoreidx (SRLconst idx [c]) ptr val mem) => (MOVWstoreshiftRL ptr idx [c] val mem)
 +(MOVWstoreidx ptr (SRAconst idx [c]) val mem) => (MOVWstoreshiftRA ptr idx [c] val mem)
 +(MOVWstoreidx (SRAconst idx [c]) ptr val mem) => (MOVWstoreshiftRA ptr idx [c] val mem)
-+
-+(MOVWloadshiftLL ptr (MOVWconst [c]) [d] mem) => (MOVWload [int64(uint32(c)<<uint64(d))] ptr mem)
-+(MOVWloadshiftRL ptr (MOVWconst [c]) [d] mem) => (MOVWload [int64(uint32(c)>>uint64(d))] ptr mem)
- (MOVWloadshiftRA ptr (MOVWconst [c]) [d] mem) => (MOVWload [c>>uint64(d)] ptr mem)
  
--(MOVWstoreshiftLL ptr (MOVWconst [c]) [d] val mem) -> (MOVWstore [int64(uint32(c)<<uint64(d))] ptr val mem)
--(MOVWstoreshiftRL ptr (MOVWconst [c]) [d] val mem) -> (MOVWstore [int64(uint32(c)>>uint64(d))] ptr val mem)
-+(MOVWstoreshiftLL ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [int64(uint32(c)<<uint64(d))] ptr val mem)
-+(MOVWstoreshiftRL ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [int64(uint32(c)>>uint64(d))] ptr val mem)
+ (MOVWloadshiftLL ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(uint32(c)<<uint64(d))] ptr mem)
+ (MOVWloadshiftRL ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(uint32(c)>>uint64(d))] ptr mem)
+@@ -1283,16 +1283,16 @@
  (MOVWstoreshiftRA ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [c>>uint64(d)] ptr val mem)
  
  // generic simplifications
