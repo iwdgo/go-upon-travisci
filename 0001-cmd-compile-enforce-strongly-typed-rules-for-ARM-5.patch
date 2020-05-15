@@ -1,4 +1,4 @@
-From 23fc83e097fdd12eff9f29a3c3e88502da9d9856 Mon Sep 17 00:00:00 2001
+From 8d54e9e1fd0f142d9e18cda8e9a21f63bf8a628d Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
