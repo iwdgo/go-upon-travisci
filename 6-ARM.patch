@@ -1,4 +1,4 @@
-From 159d2094ce414e5d1e09532991de8a7b63441f8b Mon Sep 17 00:00:00 2001
+From 92624ac9758e7f5fda53f5d482bb6f43efae4260 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 15 May 2020 20:35:00 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (6)
@@ -9,14 +9,14 @@ Toolstash-check is ...
 
 Change-Id: I55846a459aca5238f831750f04132e13a0baeed7
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 120 ++++++++++-----------
- 1 file changed, 60 insertions(+), 60 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 146 ++++++++++-----------
+ 1 file changed, 73 insertions(+), 73 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 74564de9f8..47a7d5ede9 100644
+index 74564de9f8..a528efd2c4 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -1151,68 +1151,68 @@
+@@ -1151,72 +1151,72 @@
  (CMNshiftRL x (MOVWconst [c]) [d]) => (CMNconst x [int32(uint32(c)>>uint64(d))])
  (CMNshiftRA x (MOVWconst [c]) [d]) => (CMNconst x [c>>uint64(d)])
  
@@ -136,15 +136,98 @@ index 74564de9f8..47a7d5ede9 100644
 -(ADDshiftRL [c] (SLLconst x [32-c]) x) -> (SRRconst [   c] x)
 -( ORshiftRL [c] (SLLconst x [32-c]) x) -> (SRRconst [   c] x)
 -(XORshiftRL [c] (SLLconst x [32-c]) x) -> (SRRconst [   c] x)
+-
+-(RotateLeft32 x (MOVWconst [c])) -> (SRRconst [-c&31] x)
+-(RotateLeft16 <t> x (MOVWconst [c])) -> (Or16 (Lsh16x32 <t> x (MOVWconst [c&15])) (Rsh16Ux32 <t> x (MOVWconst [-c&15])))
+-(RotateLeft8 <t> x (MOVWconst [c])) -> (Or8 (Lsh8x32 <t> x (MOVWconst [c&7])) (Rsh8Ux32 <t> x (MOVWconst [-c&7])))
 +(ADDshiftLL [c] (SRLconst x [32-c]) x) => (SRRconst [32-c] x)
 +( ORshiftLL [c] (SRLconst x [32-c]) x) => (SRRconst [32-c] x)
 +(XORshiftLL [c] (SRLconst x [32-c]) x) => (SRRconst [32-c] x)
 +(ADDshiftRL [c] (SLLconst x [32-c]) x) => (SRRconst [   c] x)
 +( ORshiftRL [c] (SLLconst x [32-c]) x) => (SRRconst [   c] x)
 +(XORshiftRL [c] (SLLconst x [32-c]) x) => (SRRconst [   c] x)
++
++(RotateLeft32 x (MOVWconst [c])) => (SRRconst [-c&31] x)
++(RotateLeft16 <t> x (MOVWconst [c])) => (Or16 (Lsh16x32 <t> x (MOVWconst [c&15])) (Rsh16Ux32 <t> x (MOVWconst [-c&15])))
++(RotateLeft8 <t> x (MOVWconst [c])) => (Or8 (Lsh8x32 <t> x (MOVWconst [c&7])) (Rsh8Ux32 <t> x (MOVWconst [-c&7])))
+ (RotateLeft32 x y) -> (SRR x (RSBconst [0] <y.Type> y))
  
- (RotateLeft32 x (MOVWconst [c])) -> (SRRconst [-c&31] x)
- (RotateLeft16 <t> x (MOVWconst [c])) -> (Or16 (Lsh16x32 <t> x (MOVWconst [c&15])) (Rsh16Ux32 <t> x (MOVWconst [-c&15])))
+ // ((x>>8) | (x<<8)) -> (REV16 x), the type of x is uint16, "|" can also be "^" or "+".
+@@ -1226,7 +1226,7 @@
+ ((ADDshiftLL|ORshiftLL|XORshiftLL) <typ.UInt16> [8] (SRLconst <typ.UInt16> [24] (SLLconst [16] x)) x) && objabi.GOARM>=6 -> (REV16 x)
+ 
+ // use indexed loads and stores
+-(MOVWload [0] {sym} (ADD ptr idx) mem) && sym == nil -> (MOVWloadidx ptr idx mem)
++(MOVWload [0] {sym} (ADD ptr idx) mem) && sym == nil => (MOVWloadidx ptr idx mem)
+ (MOVWstore [0] {sym} (ADD ptr idx) val mem) && sym == nil -> (MOVWstoreidx ptr idx val mem)
+ (MOVWload [0] {sym} (ADDshiftLL ptr idx [c]) mem) && sym == nil -> (MOVWloadshiftLL ptr idx [c] mem)
+ (MOVWload [0] {sym} (ADDshiftRL ptr idx [c]) mem) && sym == nil -> (MOVWloadshiftRL ptr idx [c] mem)
+@@ -1242,7 +1242,7 @@
+ (MOVHstore [0] {sym} (ADD ptr idx) val mem) && sym == nil -> (MOVHstoreidx ptr idx val mem)
+ 
+ // constant folding in indexed loads and stores
+-(MOVWloadidx ptr (MOVWconst [c]) mem) -> (MOVWload [c] ptr mem)
++(MOVWloadidx ptr (MOVWconst [c]) mem) => (MOVWload [c] ptr mem)
+ (MOVWloadidx (MOVWconst [c]) ptr mem) -> (MOVWload [c] ptr mem)
+ (MOVBloadidx ptr (MOVWconst [c]) mem) -> (MOVBload [c] ptr mem)
+ (MOVBloadidx (MOVWconst [c]) ptr mem) -> (MOVBload [c] ptr mem)
+@@ -1253,14 +1253,14 @@
+ (MOVHloadidx ptr (MOVWconst [c]) mem) -> (MOVHload [c] ptr mem)
+ (MOVHloadidx (MOVWconst [c]) ptr mem) -> (MOVHload [c] ptr mem)
+ 
+-(MOVWstoreidx ptr (MOVWconst [c]) val mem) -> (MOVWstore [c] ptr val mem)
++(MOVWstoreidx ptr (MOVWconst [c]) val mem) => (MOVWstore [c] ptr val mem)
+ (MOVWstoreidx (MOVWconst [c]) ptr val mem) -> (MOVWstore [c] ptr val mem)
+ (MOVBstoreidx ptr (MOVWconst [c]) val mem) -> (MOVBstore [c] ptr val mem)
+ (MOVBstoreidx (MOVWconst [c]) ptr val mem) -> (MOVBstore [c] ptr val mem)
+ (MOVHstoreidx ptr (MOVWconst [c]) val mem) -> (MOVHstore [c] ptr val mem)
+ (MOVHstoreidx (MOVWconst [c]) ptr val mem) -> (MOVHstore [c] ptr val mem)
+ 
+-(MOVWloadidx ptr (SLLconst idx [c]) mem) -> (MOVWloadshiftLL ptr idx [c] mem)
++(MOVWloadidx ptr (SLLconst idx [c]) mem) => (MOVWloadshiftLL ptr idx [c] mem)
+ (MOVWloadidx (SLLconst idx [c]) ptr mem) -> (MOVWloadshiftLL ptr idx [c] mem)
+ (MOVWloadidx ptr (SRLconst idx [c]) mem) -> (MOVWloadshiftRL ptr idx [c] mem)
+ (MOVWloadidx (SRLconst idx [c]) ptr mem) -> (MOVWloadshiftRL ptr idx [c] mem)
+@@ -1283,7 +1283,7 @@
+ (MOVWstoreshiftRA ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [c>>uint64(d)] ptr val mem)
+ 
+ // generic simplifications
+-(ADD x (RSBconst [0] y)) -> (SUB x y)
++(ADD x (RSBconst [0] y)) => (SUB x y)
+ (ADD <t> (RSBconst [c] x) (RSBconst [d] y)) -> (RSBconst [c+d] (ADD <t> x y))
+ (SUB x x) -> (MOVWconst [0])
+ (RSB x x) -> (MOVWconst [0])
+@@ -1292,7 +1292,7 @@
+ (XOR x x) -> (MOVWconst [0])
+ (BIC x x) -> (MOVWconst [0])
+ 
+-(ADD (MUL x y) a) -> (MULA x y a)
++(ADD (MUL x y) a) => (MULA x y a)
+ (SUB a (MUL x y)) && objabi.GOARM == 7 -> (MULS x y a)
+ (RSB (MUL x y) a) && objabi.GOARM == 7 -> (MULS x y a)
+ 
+@@ -1313,10 +1313,10 @@
+ (SUBD a (MULD x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULSD a x y)
+ (SUBD a (NMULD x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULAD a x y)
+ 
+-(AND x (MVN y)) -> (BIC x y)
++(AND x (MVN y)) => (BIC x y)
+ 
+ // simplification with *shift ops
+-(SUBshiftLL x (SLLconst x [c]) [d]) && c==d -> (MOVWconst [0])
++(SUBshiftLL x (SLLconst x [c]) [d]) && c==d => (MOVWconst [0])
+ (SUBshiftRL x (SRLconst x [c]) [d]) && c==d -> (MOVWconst [0])
+ (SUBshiftRA x (SRAconst x [c]) [d]) && c==d -> (MOVWconst [0])
+ (RSBshiftLL x (SLLconst x [c]) [d]) && c==d -> (MOVWconst [0])
+@@ -1339,7 +1339,7 @@
+ (AND x (MVNshiftRA y [c])) -> (BICshiftRA x y [c])
+ 
+ // floating point optimizations
+-(CMPF x (MOVFconst [0])) -> (CMPF0 x)
++(CMPF x (MOVFconst [0])) => (CMPF0 x)
+ (CMPD x (MOVDconst [0])) -> (CMPD0 x)
+ 
+ // bit extraction
 -- 
 2.22.0.windows.1
 
