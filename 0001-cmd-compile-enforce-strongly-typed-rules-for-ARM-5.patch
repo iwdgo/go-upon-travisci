@@ -1,4 +1,4 @@
-From f7978da02c1bea395c63c4637d29d3d680b129dd Mon Sep 17 00:00:00 2001
+From 5334124915388b443fd03067628ebdecebbfc9f1 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
@@ -9,11 +9,11 @@ Toolstash-check is successful.
 
 Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 548 ++++++++++-----------
- 1 file changed, 274 insertions(+), 274 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 530 ++++++++++-----------
+ 1 file changed, 265 insertions(+), 265 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..408e25ebca 100644
+index dc490bd764..74564de9f8 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -767,49 +767,49 @@
@@ -105,35 +105,7 @@ index dc490bd764..408e25ebca 100644
  
  // generic constant folding
  (ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [-c] x)
-@@ -846,253 +846,253 @@
- (MULS (MOVWconst [c]) (MOVWconst [d]) a) => (SUBconst [c*d] a)
- (Select0 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) => (MOVWconst [int32(uint32(c)/uint32(d))])
- (Select1 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) => (MOVWconst [int32(uint32(c)%uint32(d))])
--(ANDconst [c] (MOVWconst [d])) -> (MOVWconst [c&d])
--(ANDconst [c] (ANDconst [d] x)) -> (ANDconst [c&d] x)
--(ORconst [c] (MOVWconst [d])) -> (MOVWconst [c|d])
--(ORconst [c] (ORconst [d] x)) -> (ORconst [c|d] x)
--(XORconst [c] (MOVWconst [d])) -> (MOVWconst [c^d])
--(XORconst [c] (XORconst [d] x)) -> (XORconst [c^d] x)
--(BICconst [c] (MOVWconst [d])) -> (MOVWconst [d&^c])
-+(ANDconst [c] (MOVWconst [d])) => (MOVWconst [c&d])
-+(ANDconst [c] (ANDconst [d] x)) => (ANDconst [c&d] x)
-+(ORconst [c] (MOVWconst [d])) => (MOVWconst [c|d])
-+(ORconst [c] (ORconst [d] x)) => (ORconst [c|d] x)
-+(XORconst [c] (MOVWconst [d])) => (MOVWconst [c^d])
-+(XORconst [c] (XORconst [d] x)) => (XORconst [c^d] x)
-+(BICconst [c] (MOVWconst [d])) => (MOVWconst [d&^c])
- (BICconst [c] (BICconst [d] x)) => (BICconst [c|d] x)
--(MVN (MOVWconst [c])) -> (MOVWconst [^c])
-+(MVN (MOVWconst [c])) => (MOVWconst [^c])
- (MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
- (MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
- (MOVHreg (MOVWconst [c])) -> (MOVWconst [int64(int16(c))])
- (MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
--(MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
-+(MOVWreg (MOVWconst [c])) => (MOVWconst [c])
- // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
- (BFX [c] (MOVWconst [d])) => (MOVWconst [d<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))])
+@@ -865,234 +865,234 @@
  (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
  
  // absorb shifts into ops
