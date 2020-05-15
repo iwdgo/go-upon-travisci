@@ -1,46 +1,21 @@
-From 992068575c9a2184ec53a39451f5d3bab27e1913 Mon Sep 17 00:00:00 2001
+From b4be8116fcf2421a6e6f84ed3ab6bccaba0f6987 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Thu, 14 May 2020 07:43:01 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (5)
 
-From "remove redundant *const ops" until "constant folding in *shift ops"
-(L803-L1095)
+From "absorb shifts into ops" until "constant folding in *shift ops"
+(L834-L1095)
 Toolstash-check is successful.
 
 Change-Id: Ieed7d4643dc3dc2b3649477e87aebd22c81d1322
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 470 ++++++++++-----------
- 1 file changed, 235 insertions(+), 235 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 452 ++++++++++-----------
+ 1 file changed, 226 insertions(+), 226 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index dc490bd764..61d4dd0c40 100644
+index dc490bd764..77e96924ad 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -801,15 +801,15 @@
- (SRAcond x _ (FlagGT_UGT)) -> (SRAconst x [31])
- 
- // remove redundant *const ops
--(ADDconst [0] x) -> x
--(SUBconst [0] x) -> x
--(ANDconst [0] _) -> (MOVWconst [0])
--(ANDconst [c] x) && int32(c)==-1 -> x
--(ORconst [0] x) -> x
--(ORconst [c] _) && int32(c)==-1 -> (MOVWconst [-1])
--(XORconst [0] x) -> x
--(BICconst [0] x) -> x
--(BICconst [c] _) && int32(c)==-1 -> (MOVWconst [0])
-+(ADDconst [0] x) => x
-+(SUBconst [0] x) => x
-+(ANDconst [0] _) => (MOVWconst [0])
-+(ANDconst [c] x) && int32(c)==-1 => x
-+(ORconst [0] x) => x
-+(ORconst [c] _) && int32(c)==-1 => (MOVWconst [-1])
-+(XORconst [0] x) => x
-+(BICconst [0] x) => x
-+(BICconst [c] _) && int32(c)==-1 => (MOVWconst [0])
- 
- // generic constant folding
- (ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [-c] x)
 @@ -865,234 +865,234 @@
  (BFXU [c] (MOVWconst [d])) => (MOVWconst [int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
  
