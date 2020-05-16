@@ -1,19 +1,19 @@
-From 7f88e40a982f09710847056b4b9289f53ebea997 Mon Sep 17 00:00:00 2001
+From 4fe8bdfe8101a0342e14d82c1ce5238789cc86e3 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 15 May 2020 20:35:00 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (6)
 
 End of "constant folding in *shift ops" until EOF
 (L1154-)
-Toolstash-check is ...
+Toolstash-check is successful.
 
 Change-Id: I55846a459aca5238f831750f04132e13a0baeed7
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 710 ++++++++++-----------
- 1 file changed, 355 insertions(+), 355 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 702 ++++++++++-----------
+ 1 file changed, 351 insertions(+), 351 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 74564de9f8..0d5f59fb22 100644
+index 74564de9f8..e99e951528 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -1151,72 +1151,72 @@
@@ -290,7 +290,7 @@ index 74564de9f8..0d5f59fb22 100644
  
  // the result will overwrite the addend, since they are in the same register
  (ADDF a (MULF x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULAF a x y)
-@@ -1313,247 +1313,247 @@
+@@ -1313,246 +1313,246 @@
  (SUBD a (MULD x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULSD a x y)
  (SUBD a (NMULD x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULAD a x y)
  
@@ -558,10 +558,6 @@ index 74564de9f8..0d5f59fb22 100644
 -(GE (CMPconst [0] l:(XORshiftLLreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftLLreg x y z) yes no)
 -(GE (CMPconst [0] l:(XORshiftRLreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftRLreg x y z) yes no)
 -(GE (CMPconst [0] l:(XORshiftRAreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftRAreg x y z) yes no)
--
--(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
--(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
--(MOVWload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
 +(CMP x (RSBconst [0] y)) => (CMN x y)
 +(CMN x (RSBconst [0] y)) => (CMP x y)
 +(EQ (CMPconst [0] l:(SUB x y)) yes no) && l.Uses==1 => (EQ (CMP x y) yes no)
@@ -768,10 +764,9 @@ index 74564de9f8..0d5f59fb22 100644
 +(GE (CMPconst [0] l:(XORshiftLLreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftLLreg x y z) yes no)
 +(GE (CMPconst [0] l:(XORshiftRLreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftRLreg x y z) yes no)
 +(GE (CMPconst [0] l:(XORshiftRAreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftRAreg x y z) yes no)
-+
-+(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int64(read8(sym, off))])
-+(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
-+(MOVWload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
+ 
+ (MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
+ (MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
 -- 
 2.22.0.windows.1
 
