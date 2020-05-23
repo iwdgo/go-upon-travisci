@@ -1,4 +1,4 @@
-From e4be1618cf39db13f1f2c6e70e02318edcf4a335 Mon Sep 17 00:00:00 2001
+From c62e7acc2373e921691a7bd490ac0f9734d0f321 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Wed, 19 Feb 2020 20:18:00 +0100
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -16,21 +16,21 @@ Fixes #32558
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
  src/internal/syscall/unix/at_aix.go           |  1 +
- src/internal/syscall/unix/at_darwin.go        |  2 +
- src/internal/syscall/unix/at_freebsd.go       |  2 +
- src/internal/syscall/unix/at_solaris.go       |  2 +
- .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
- src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
- src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
- .../syscall/unix/at_sysnum_openbsd.go         |  2 +
- .../syscall/windows/syscall_windows.go        |  2 +
- src/os/file_plan9.go                          |  7 +++
- src/os/file_posix.go                          |  8 +++
- src/os/file_unix.go                           |  2 +
- src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 58 +++++++++++++++++++
- src/syscall/types_windows.go                  |  3 +
- 15 files changed, 97 insertions(+)
+ src/internal/syscall/unix/at_darwin.go        |  2 ++
+ src/internal/syscall/unix/at_freebsd.go       |  2 ++
+ src/internal/syscall/unix/at_solaris.go       |  2 ++
+ .../syscall/unix/at_sysnum_dragonfly.go       |  2 ++
+ src/internal/syscall/unix/at_sysnum_linux.go  |  2 ++
+ src/internal/syscall/unix/at_sysnum_netbsd.go |  2 ++
+ .../syscall/unix/at_sysnum_openbsd.go         |  2 ++
+ .../syscall/windows/syscall_windows.go        |  2 ++
+ src/os/file_plan9.go                          |  7 ++++
+ src/os/file_posix.go                          |  8 +++++
+ src/os/file_unix.go                           |  2 ++
+ src/os/file_windows.go                        |  2 ++
+ src/os/os_test.go                             | 33 +++++++++++++++++++
+ src/syscall/types_windows.go                  |  3 ++
+ 15 files changed, 72 insertions(+)
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
 index 425df98211..fdfb8c5a0c 100644
@@ -210,69 +210,44 @@ index 0d8c0fd20d..0d4f46298d 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..7ecb4b86c5 100644
+index e8c64510f5..668e45d9f8 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1277,6 +1277,64 @@ func TestFileChdir(t *testing.T) {
+@@ -1277,6 +1277,39 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
-+func TestChtimesWithZeroTimes(t *testing.T) {
++// filetimes returns last access time and last modification time of a file.
++func filetimes(t *testing.T, s string) (at, mt time.Time) {
++	fs, err := Stat(s)
++	if err != nil {
++		t.Fatal(err)
++	}
++	return Atime(fs), fs.ModTime()
++}
 +
-+	t0 := time.Now().Add(-1 * time.Hour)
-+	tests := []struct {
-+		mTime     time.Time
-+		aTime     time.Time
-+		wantATime time.Time
-+		wantMTime time.Time
-+	}{
-+		{
-+			aTime:     t0.Add(200 * time.Second),
-+			wantMTime: time.Time{},
-+			wantATime: t0.Add(200 * time.Second),
-+		},
-+		{
-+			mTime:     t0.Add(100 * time.Second),
-+			wantMTime: t0.Add(100 * time.Second),
-+			wantATime: time.Time{},
-+		},
-+		{
-+			mTime:     t0.Add(100 * time.Second),
-+			aTime:     t0.Add(300 * time.Second),
-+			wantMTime: t0.Add(100 * time.Second),
-+			wantATime: t0.Add(300 * time.Second),
-+		},
++// chtimesZeroValue uses test values in Chtimes and fails test if a value changed
++func chtimesZeroValue(t *testing.T, s string, at, mt, at1, mt1 time.Time) {
++	if err := Chtimes(s, at1, mt1); err != nil {
++		t.Error(err)
 +	}
-+	for _, tt := range tests {
-+		tt := tt
-+		testName := fmt.Sprintf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
-+		t.Run(testName, func(t *testing.T) {
-+			file := newFile("chtimes-with-zero", t)
-+			defer Remove(file.Name())
-+			if _, err := file.Write([]byte("Hello, World!")); err != nil {
-+				t.Fatal(err)
-+			}
-+			// Start off both MTime and ATime at t0.
-+			if err := Chtimes(file.Name(), t0, t0); err != nil {
-+				t.Fatal(err)
-+			}
-+			// Now change the times accordingly.
-+			if err := Chtimes(file.Name(), tt.aTime, tt.mTime); err != nil {
-+				t.Fatal(err)
-+			}
-+			// Finally verify the expectations.
-+			fi, err := Stat(file.Name())
-+			if err != nil {
-+				t.Fatal(err)
-+			}
-+			if got, want := fi.ModTime(), tt.wantMTime; !got.Equal(want) {
-+				t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
-+			}
-+			if got, want := Atime(fi), tt.wantATime; !got.Equal(want) {
-+				t.Errorf("AcessTime mismatch:\ngot:  %q\nwant: %q", got, want)
-+			}
-+		})
++	at2, mt2 := filetimes(t, s)
++	// .IsZero cannot be used on some OS as the update of time might overflow Unix Epoch
++	if !at.Equal(at2) || !mt.Equal(mt2) {
++		t.Errorf("at least one time has changed: got %v, %v, want %v, %v", at1, mt1, at, mt)
 +	}
++}
++
++func TestChtimesWithZeroTime(t *testing.T) {
++	f := newFile(t.Name(), t)
++	defer Remove(f.Name())
++
++	f.Write([]byte("hello, world\n"))
++
++	at, mt := filetimes(t, f.Name())
++	chtimesZeroValue(t, f.Name(), at, mt, time.Time{}, mt)
++	chtimesZeroValue(t, f.Name(), at, mt, at, time.Time{})
++	chtimesZeroValue(t, f.Name(), at, mt, time.Time{}, time.Time{})
 +}
 +
  func TestChdirAndGetwd(t *testing.T) {
