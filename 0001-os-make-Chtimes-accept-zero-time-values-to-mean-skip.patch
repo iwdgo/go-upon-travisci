@@ -1,4 +1,4 @@
-From 902a8942d6bb5ab2612641d3c70c1f34613cb026 Mon Sep 17 00:00:00 2001
+From e4be1618cf39db13f1f2c6e70e02318edcf4a335 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Wed, 19 Feb 2020 20:18:00 +0100
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -210,7 +210,7 @@ index 0d8c0fd20d..0d4f46298d 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..7246e6b81f 100644
+index e8c64510f5..7ecb4b86c5 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
 @@ -1277,6 +1277,64 @@ func TestFileChdir(t *testing.T) {
@@ -228,13 +228,13 @@ index e8c64510f5..7246e6b81f 100644
 +	}{
 +		{
 +			aTime:     t0.Add(200 * time.Second),
-+			wantMTime: t0,
++			wantMTime: time.Time{},
 +			wantATime: t0.Add(200 * time.Second),
 +		},
 +		{
 +			mTime:     t0.Add(100 * time.Second),
 +			wantMTime: t0.Add(100 * time.Second),
-+			wantATime: t0,
++			wantATime: time.Time{},
 +		},
 +		{
 +			mTime:     t0.Add(100 * time.Second),
