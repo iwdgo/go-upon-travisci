@@ -1,4 +1,4 @@
-From c62e7acc2373e921691a7bd490ac0f9734d0f321 Mon Sep 17 00:00:00 2001
+From 60047be4e1c2dac540a30c1de24f2c6d90c32cb1 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Wed, 19 Feb 2020 20:18:00 +0100
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -25,12 +25,14 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  .../syscall/unix/at_sysnum_openbsd.go         |  2 ++
  .../syscall/windows/syscall_windows.go        |  2 ++
  src/os/file_plan9.go                          |  7 ++++
- src/os/file_posix.go                          |  8 +++++
+ src/os/file_posix.go                          | 12 +++++++
  src/os/file_unix.go                           |  2 ++
  src/os/file_windows.go                        |  2 ++
  src/os/os_test.go                             | 33 +++++++++++++++++++
+ src/syscall/fs_js.go                          | 12 +++++++
+ src/syscall/tables_js.go                      |  4 +++
  src/syscall/types_windows.go                  |  3 ++
- 15 files changed, 72 insertions(+)
+ 17 files changed, 92 insertions(+)
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
 index 425df98211..fdfb8c5a0c 100644
@@ -43,14 +45,14 @@ index 425df98211..fdfb8c5a0c 100644
 +	UTIME_OMIT = -0x3
  )
 diff --git a/src/internal/syscall/unix/at_darwin.go b/src/internal/syscall/unix/at_darwin.go
-index a88a27e0c6..3dfe5d16d1 100644
+index a88a27e0c6..e2f17187e0 100644
 --- a/src/internal/syscall/unix/at_darwin.go
 +++ b/src/internal/syscall/unix/at_darwin.go
 @@ -9,6 +9,8 @@ import (
  	_ "unsafe" // for linkname
  )
  
-+const UTIME_OMIT = -0x1
++const UTIME_OMIT = -0x2
 +
  func Unlinkat(dirfd int, path string, flags int) error {
  	return unlinkat(dirfd, path, flags)
@@ -158,7 +160,7 @@ index ac68cf7fed..05d7361a73 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index 24ea554b62..d543137ea5 100644
+index 24ea554b62..3a855a3e44 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
 @@ -163,6 +163,7 @@ func (f *File) Sync() error {
@@ -169,11 +171,15 @@ index 24ea554b62..d543137ea5 100644
  //
  // The underlying filesystem may truncate or round the values to a
  // less precise time unit.
-@@ -171,6 +172,13 @@ func Chtimes(name string, atime time.Time, mtime time.Time) error {
+@@ -171,6 +172,17 @@ func Chtimes(name string, atime time.Time, mtime time.Time) error {
  	var utimes [2]syscall.Timespec
  	utimes[0] = syscall.NsecToTimespec(atime.UnixNano())
  	utimes[1] = syscall.NsecToTimespec(mtime.UnixNano())
 +	utimeOmit := syscall.Timespec{Sec: 0, Nsec: _UTIME_OMIT}
++	switch runtime.GOOS {
++	case "js":
++		utimeOmit = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
++	}
 +	if atime.IsZero() {
 +		utimes[0] = utimeOmit
 +	}
@@ -253,15 +259,50 @@ index e8c64510f5..668e45d9f8 100644
  func TestChdirAndGetwd(t *testing.T) {
  	// TODO(brainman): file.Chdir() is not implemented on windows.
  	if runtime.GOOS == "windows" {
+diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
+index 262ec28afd..767b15ca82 100644
+--- a/src/syscall/fs_js.go
++++ b/src/syscall/fs_js.go
+@@ -282,6 +282,18 @@ func UtimesNano(path string, ts []Timespec) error {
+ 	}
+ 	atime := ts[0].Sec
+ 	mtime := ts[1].Sec
++	if atime == UTIME_OMIT || mtime == UTIME_OMIT {
++		var st Stat_t
++		if err := Stat(path, &st); err != nil {
++			return err
++		}
++		if atime == UTIME_OMIT {
++			atime = st.Atime
++		}
++		if mtime == UTIME_OMIT {
++			mtime = st.Mtime
++		}
++	}
+ 	_, err := fsCall("utimes", path, atime, mtime)
+ 	return err
+ }
+diff --git a/src/syscall/tables_js.go b/src/syscall/tables_js.go
+index a7c4f8c890..4179057012 100644
+--- a/src/syscall/tables_js.go
++++ b/src/syscall/tables_js.go
+@@ -492,3 +492,7 @@ var errnoByCode = map[string]Errno{
+ 	"ECASECLASH":      ECASECLASH,
+ 	"EWOULDBLOCK":     EWOULDBLOCK,
+ }
++
++// UTIME_OMIT is the sentinel value to indicate that a time value of a file should not
++// be changed when using Chtimes.
++const UTIME_OMIT = -2
 diff --git a/src/syscall/types_windows.go b/src/syscall/types_windows.go
-index 0349f3b180..9563d3e8c0 100644
+index 0349f3b180..424f4566f2 100644
 --- a/src/syscall/types_windows.go
 +++ b/src/syscall/types_windows.go
 @@ -362,6 +362,9 @@ func (ft *Filetime) Nanoseconds() int64 {
  }
  
  func NsecToFiletime(nsec int64) (ft Filetime) {
-+	if nsec <= 0 {
++	if nsec == 0 {
 +		return
 +	}
  	// convert into 100-nanosecond
