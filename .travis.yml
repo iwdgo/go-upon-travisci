@@ -5,6 +5,7 @@ arch: amd64
 os:
   - windows
   - linux
+  - osx
 
 go: 1.11.x
 
@@ -12,10 +13,9 @@ env:
   - GO111MODULE=auto
 
 install:
-  - export GITROOT=$(pwd)
+  - echo ""
 
 before_script:
-  - echo $GITROOT
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - mkdir golang
   - cd golang
@@ -23,11 +23,11 @@ before_script:
   - cd go
   - export GOCLONE=$(pwd)
   - git log -1 --pretty=short
-  - cd $GITROOT
-  - mv make_travisci.bash ./golang/go/src/make.bash
+  - cd $TRAVIS_BUILD_DIR
+  - mv make_travisci.bash $GOCLONE/src/make.bash # not committed
 
 script:
-  - cd $GOROOT/src
+  - cd $GOCLONE/src
   - sh ./make.bash
 
 after_success:
