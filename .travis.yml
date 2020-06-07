@@ -24,7 +24,6 @@ before_script:
   - export GOCLONE=$(pwd)
   - git log -1 --pretty=short
   - cd $GITROOT
-  - mv make_travisci.bash ./golang/go/src/make.bash
 
 script:
   - cd $GOROOT/src
