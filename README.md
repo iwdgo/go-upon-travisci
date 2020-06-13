@@ -17,9 +17,9 @@ The artefact is available for download inside the Cirrus CI job.
 
 ## Travis CI 
 
-Toolchain runs on Linux and Windows on the default architecture `amd64`.
-Status is on build. Any failing test is not reported by the badge.
-For an unknown reason, it is necessary to override make.bash.
+Toolchain runs on default architecture `amd64` on Linux, Windows and OSX.
+Status is on build. Badge does not report a failing test.
+For an unknown reason, it is necessary to tailor the last line of make.bash.
 
 ## Github Actions
 
