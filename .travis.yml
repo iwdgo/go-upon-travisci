@@ -44,7 +44,7 @@ after_success:
   - cd $GOCLONE
   - export GOROOT= # get intermediate commit of go
   - ./bin/go tool dist version
-  # ./bin/go tool dist test
+  - ./bin/go tool dist test
 
 after_script:
   - ./bin/go env
@@ -52,26 +52,25 @@ after_script:
   - cd src
   - go test -run=TestScript/mod_query_exclude cmd/go
   - go test -run=TestScript/mod_query_exclude -v cmd/go
-  - go env -w GOPROXY=localhost:6123/mod
-  - export GOPROXY=localhost:6123/mod
+  - go env -w GOPROXY=https://localhost:6123/mod
   - go test -timeout=0 -run=TestScript/mod_query_exclude cmd/go
   - go test -timeout=0 -run=TestScript/mod_query_exclude -v cmd/go
   - go env -w GOPROXY=""
   - export GOPROXY=
   - go test -run=TestScript/mod_download cmd/go
   - go test -run=TestScript/mod_download -v cmd/go
-  - export GOPROXY=localhost:6123/mod
+  - go env -w GOPROXY=https://example.com/invalidpath/v1
   - go test -run=TestScript/gcflags_patterns -count=1 -short cmd/go
   - go test -run=TestScript/gcflags_patterns -count=1 -short -v cmd/go
   - echo "***** Feature tests *****"
   - ../bin/go test -run=TestScript/mod_query_exclude cmd/go
   - ../bin/go test -run=TestScript/mod_query_exclude -v cmd/go
-  - export GOPROXY=example.com/invalidpath/v1
+  - go env -w GOPROXY=https://localhost:6123/mod
   - ../bin/go test -timeout=0 -run=TestScript/mod_query_exclude cmd/go
   - ../bin/go test -timeout=0 -run=TestScript/mod_query_exclude -v cmd/go
   - go env -w GOPROXY=""
-  - export GOPROXY=
   - ../bin/go test -run=TestScript/mod_download cmd/go
   - ../bin/go test -run=TestScript/mod_download -v cmd/go
+  - go env -w GOPROXY=https://example.com/invalidpath/v1
   - ../bin/go test -run=TestScript/gcflags_patterns -count=1 -short cmd/go
   - ../bin/go test -run=TestScript/gcflags_patterns -count=1 -short -v cmd/go
