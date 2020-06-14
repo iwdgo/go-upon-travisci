@@ -23,7 +23,8 @@ before_script:
   - cd go
   - export GOCLONE=$(pwd)
   - cd $TRAVIS_BUILD_DIR
-  - mv make_travisci.bash $GOCLONE/src/make.bash # not committed
+  - mv make_travisci.bash $GOCLONE/src/make.bash
+  - export COMMIT_TITLE=$(basename -s .patch *.patch)
   - mv *.patch $GOCLONE
   - cd $GOCLONE
   - git log -1  --pretty=short # on tip
