@@ -48,16 +48,12 @@ after_success:
   - pwd
   - ./bin/go tool dist version
   - ./bin/go tool dist test
-  - echo "***** Proxy *****"
-  - ./bin/go env -w GOPROXY=localhost:6123/mod
-  - ./bin/go env GOPROXY
-  - ping -c 1 localhost
-  - Test-NetConnection localhost -port 6123 || true
-  - nmap -p 6123 locahost || true
   - echo "***** Feature tests *****"
   - ./bin/go test -run=TestScript/mod_query_exclude cmd/go
   - ./bin/go test -run=TestScript/mod_query_exclude -v cmd/go
-  - export GOPROXY=localhost:6123/mod && ./bin/go test -run=TestScript/mod_query_exclude -timeout=0 -proxy=localhost:6123 cmd/go
-  - export GOPROXY=localhost:6123/mod && ./bin/go test -run=TestScript/mod_query_exclude -v -timeout=0 -proxy=localhost:6123 cmd/go
+  - export GOPROXY=localhost:6123/mod && ./bin/go test -timeout=0 -proxy=localhost:6123 -run=TestScript/mod_query_exclude cmd/go
+  - export GOPROXY=localhost:6123/mod && ./bin/go test -timeout=0 -proxy=localhost:6123 -run=TestScript/mod_query_exclude -v cmd/go
   - ./bin/go test -run=TestScript/mod_download cmd/go
   - ./bin/go test -run=TestScript/mod_download -v cmd/go
+  - ./bin/go test -run=TestScript/gcflags_patterns -count=1 -short cmd/go
+  - ./bin/go test -run=TestScript/gcflags_patterns -count=1 -short -v cmd/go

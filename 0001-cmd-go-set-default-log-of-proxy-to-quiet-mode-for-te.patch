@@ -1,7 +1,8 @@
-From a691fc3732640b1edeaf0519a061d18077e5ccd6 Mon Sep 17 00:00:00 2001
+From 882a8cac21392cd4ea8a46617f8c1cadd0cdbfce Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 12 Apr 2020 21:28:41 +0200
-Subject: [PATCH] cmd/go: remove default output of proxy_test log in tests
+Subject: [PATCH] cmd/go: set default log of proxy to quiet mode for tests
+ scripts
 
 Verbose flag (-v) displays details.
 
@@ -10,11 +11,11 @@ Fixes #30604
 
 Change-Id: Ie75a331cd6ca51806c5720443506d4fe0bec28cf
 ---
- src/cmd/go/proxy_test.go | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ src/cmd/go/proxy_test.go | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
 diff --git a/src/cmd/go/proxy_test.go b/src/cmd/go/proxy_test.go
-index 2a4d2935b3..f989a83c1b 100644
+index 2a4d2935b3..bccfb03c9c 100644
 --- a/src/cmd/go/proxy_test.go
 +++ b/src/cmd/go/proxy_test.go
 @@ -50,6 +50,7 @@ func StartProxy() {
@@ -40,6 +41,15 @@ index 2a4d2935b3..f989a83c1b 100644
  		fmt.Fprintf(os.Stderr, "go test proxy running at GOPROXY=%s\n", proxyURL)
  		go func() {
  			log.Fatalf("go proxy: http.Serve: %v", http.Serve(l, http.HandlerFunc(proxyHandler)))
+@@ -91,7 +98,7 @@ func readModList() {
+ 		encPath := strings.ReplaceAll(name[:i], "_", "/")
+ 		path, err := module.UnescapePath(encPath)
+ 		if err != nil {
+-			if encPath != "example.com/invalidpath/v1" {
++			if testing.Verbose() {
+ 				fmt.Fprintf(os.Stderr, "go proxy_test: %v\n", err)
+ 			}
+ 			continue
 -- 
 2.22.0.windows.1
 
