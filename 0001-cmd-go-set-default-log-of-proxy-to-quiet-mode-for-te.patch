@@ -1,21 +1,21 @@
-From 882a8cac21392cd4ea8a46617f8c1cadd0cdbfce Mon Sep 17 00:00:00 2001
+From 0ac96d6b20e226c457c183fa8ff7aefcfaa76a95 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 12 Apr 2020 21:28:41 +0200
 Subject: [PATCH] cmd/go: set default log of proxy to quiet mode for tests
  scripts
 
-Verbose flag (-v) displays details.
+Verbose flag (-v) overrides it.
 
 Fixes #29515
 Fixes #30604
 
 Change-Id: Ie75a331cd6ca51806c5720443506d4fe0bec28cf
 ---
- src/cmd/go/proxy_test.go | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ src/cmd/go/proxy_test.go | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/src/cmd/go/proxy_test.go b/src/cmd/go/proxy_test.go
-index 2a4d2935b3..bccfb03c9c 100644
+index 2a4d2935b3..71d904569c 100644
 --- a/src/cmd/go/proxy_test.go
 +++ b/src/cmd/go/proxy_test.go
 @@ -50,6 +50,7 @@ func StartProxy() {
@@ -26,22 +26,21 @@ index 2a4d2935b3..bccfb03c9c 100644
  		if addr == "" {
  			addr = "localhost:0"
  		}
-@@ -58,7 +59,13 @@ func StartProxy() {
+@@ -58,7 +59,12 @@ func StartProxy() {
  			log.Fatal(err)
  		}
  		*proxyAddr = l.Addr().String()
 -		proxyURL = "http://" + *proxyAddr + "/mod"
++		// default proxy logging is quiet.
++		// It is overridden by verbose (-v) flag.
 +		if addr != "localhost:0" && !testing.Verbose() && !strings.Contains(*proxyAddr, "quiet") {
-+			// -proxy flag was not used
-+			// default is quiet unless -v is requested
-+			// If quiet is already present with verbose flag, proxy is unchanged and quiet takes precedence
 +			*proxyAddr += "/quiet"
 +		}
 +		proxyURL = "http://" + *proxyAddr + "/mod" + quiet
  		fmt.Fprintf(os.Stderr, "go test proxy running at GOPROXY=%s\n", proxyURL)
  		go func() {
  			log.Fatalf("go proxy: http.Serve: %v", http.Serve(l, http.HandlerFunc(proxyHandler)))
-@@ -91,7 +98,7 @@ func readModList() {
+@@ -91,7 +97,7 @@ func readModList() {
  		encPath := strings.ReplaceAll(name[:i], "_", "/")
  		path, err := module.UnescapePath(encPath)
  		if err != nil {
