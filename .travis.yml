@@ -57,7 +57,7 @@ after_success:
   - echo "***** Feature tests *****"
   - ./bin/go test -run=TestScript/mod_query_exclude cmd/go
   - ./bin/go test -run=TestScript/mod_query_exclude -v cmd/go
-  - ./bin/go test -run=TestScript/mod_query_exclude -timeout=0 -proxy=localhost:6123/mod cmd/go
-  - ./bin/go test -run=TestScript/mod_query_exclude -v -timeout=0 -proxy=localhost:6123/mod cmd/go
+  - export GOPROXY=localhost:6123/mod && ./bin/go test -run=TestScript/mod_query_exclude -timeout=0 -proxy=localhost:6123 cmd/go
+  - export GOPROXY=localhost:6123/mod && ./bin/go test -run=TestScript/mod_query_exclude -v -timeout=0 -proxy=localhost:6123 cmd/go
+  - ./bin/go test -run=TestScript/mod_download cmd/go
   - ./bin/go test -run=TestScript/mod_download -v cmd/go
-  - ./bin/go test -run=TestScript/gcflags_patterns -count=1 -short -v cmd/go
