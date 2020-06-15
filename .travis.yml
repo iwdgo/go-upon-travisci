@@ -64,12 +64,12 @@ after_script:
   - echo "***** Feature tests *****"
   - ../bin/go test -run=TestScript/mod_query_exclude cmd/go
   - ../bin/go test -run=TestScript/mod_query_exclude -v cmd/go
-  - go env -w GOPROXY="https://localhost:6123/mod"
+  - ../bin/go env -w GOPROXY="https://localhost:6123/mod"
   - ../bin/go test -timeout=0 -run=TestScript/mod_query_exclude cmd/go
   - ../bin/go test -timeout=0 -run=TestScript/mod_query_exclude -v cmd/go
-  - go env -u GOPROXY
+  - ../bin/go env -u GOPROXY
   - ../bin/go test -run=TestScript/mod_download cmd/go
   - ../bin/go test -run=TestScript/mod_download -v cmd/go
-  - go env -w GOPROXY="https://example.com/invalidpath/v1"
+  - ../bin/go env -w GOPROXY="https://example.com/invalidpath/v1"
   - ../bin/go test -run=TestScript/gcflags_patterns -count=1 -short cmd/go
   - ../bin/go test -run=TestScript/gcflags_patterns -count=1 -short -v cmd/go
