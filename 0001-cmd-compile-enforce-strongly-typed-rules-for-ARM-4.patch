@@ -1,0 +1,68 @@
+From d209d5dac58f031998cc776c7285bb189e421399 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Tue, 12 May 2020 22:08:01 +0200
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
+
+from "nul by constants" until "absorb flags constants into boolean...".
+L547-L767
+Toolstash-check successful.
+
+Change-Id: I7976a80595475abc848b9d84dc9197cb862d1290
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 26 +++++++++++-----------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index ab8bd0e81e..ce5913fe31 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -544,7 +544,7 @@
+ 
+ // if a register move has only 1 use, just use the same register without emitting instruction
+ // MOVWnop doesn't emit instruction, only for ensuring the type.
+-(MOVWreg x) && x.Uses == 1 -> (MOVWnop x)
++(MOVWreg x) && x.Uses == 1 => (MOVWnop x)
+ 
+ // mul by constant
+ (MUL x (MOVWconst [c])) && int32(c) == -1 -> (RSBconst [0] x)
+@@ -603,8 +603,8 @@
+ (MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
+ 
+ // div by constant
+-(Select0 (CALLudiv x (MOVWconst [1]))) -> x
+-(Select1 (CALLudiv _ (MOVWconst [1]))) -> (MOVWconst [0])
++(Select0 (CALLudiv x (MOVWconst [1]))) => x
++(Select1 (CALLudiv _ (MOVWconst [1]))) => (MOVWconst [0])
+ (Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (SRLconst [log2(c)] x)
+ (Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (ANDconst [c-1] x)
+ 
+@@ -664,16 +664,16 @@
+ (GEnoov (FlagConstant [fc]) yes no) && !fc.geNoov() => (First no yes)
+ 
+ // absorb InvertFlags into branches
+-(LT (InvertFlags cmp) yes no) -> (GT cmp yes no)
+-(GT (InvertFlags cmp) yes no) -> (LT cmp yes no)
+-(LE (InvertFlags cmp) yes no) -> (GE cmp yes no)
+-(GE (InvertFlags cmp) yes no) -> (LE cmp yes no)
+-(ULT (InvertFlags cmp) yes no) -> (UGT cmp yes no)
+-(UGT (InvertFlags cmp) yes no) -> (ULT cmp yes no)
+-(ULE (InvertFlags cmp) yes no) -> (UGE cmp yes no)
+-(UGE (InvertFlags cmp) yes no) -> (ULE cmp yes no)
+-(EQ (InvertFlags cmp) yes no) -> (EQ cmp yes no)
+-(NE (InvertFlags cmp) yes no) -> (NE cmp yes no)
++(LT (InvertFlags cmp) yes no) => (GT cmp yes no)
++(GT (InvertFlags cmp) yes no) => (LT cmp yes no)
++(LE (InvertFlags cmp) yes no) => (GE cmp yes no)
++(GE (InvertFlags cmp) yes no) => (LE cmp yes no)
++(ULT (InvertFlags cmp) yes no) => (UGT cmp yes no)
++(UGT (InvertFlags cmp) yes no) => (ULT cmp yes no)
++(ULE (InvertFlags cmp) yes no) => (UGE cmp yes no)
++(UGE (InvertFlags cmp) yes no) => (ULE cmp yes no)
++(EQ (InvertFlags cmp) yes no) => (EQ cmp yes no)
++(NE (InvertFlags cmp) yes no) => (NE cmp yes no)
+ (LTnoov (InvertFlags cmp) yes no) => (GTnoov cmp yes no)
+ (GEnoov (InvertFlags cmp) yes no) => (LEnoov cmp yes no)
+ (LEnoov (InvertFlags cmp) yes no) => (GEnoov cmp yes no)
+-- 
+2.22.0.windows.1
+
