@@ -1,0 +1,75 @@
+From 902a953e73d361b4fa65acdec946fcbe73812722 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Thu, 2 Jul 2020 15:58:18 +0200
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (0)
+
+L0-L29
+
+Change-Id: I610c085cac598cc49ae1fdc622d2c71ecad0eff6
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 44 +++++++++++-----------
+ 1 file changed, 22 insertions(+), 22 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index ab8bd0e81e..066e61a1f5 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -2,33 +2,33 @@
+ // Use of this source code is governed by a BSD-style
+ // license that can be found in the LICENSE file.
+ 
+-(Add(Ptr|32|16|8) ...) -> (ADD ...)
+-(Add(32|64)F ...) -> (ADD(F|D) ...)
+-(Add32carry ...) -> (ADDS ...)
+-(Add32withcarry ...) -> (ADC ...)
+-
+-(Sub(Ptr|32|16|8) ...) -> (SUB ...)
+-(Sub(32|64)F ...) -> (SUB(F|D) ...)
+-(Sub32carry ...) -> (SUBS ...)
+-(Sub32withcarry ...) -> (SBC ...)
+-
+-(Mul(32|16|8) ...) -> (MUL ...)
+-(Mul(32|64)F ...) -> (MUL(F|D) ...)
+-(Hmul(32|32u) ...) -> (HMU(L|LU) ...)
+-(Mul32uhilo ...) -> (MULLU ...)
+-
+-(Div32 x y) ->
++(Add(Ptr|32|16|8) ...) => (ADD ...)
++(Add(32|64)F ...) => (ADD(F|D) ...)
++(Add32carry ...) => (ADDS ...)
++(Add32withcarry ...) => (ADC ...)
++
++(Sub(Ptr|32|16|8) ...) => (SUB ...)
++(Sub(32|64)F ...) => (SUB(F|D) ...)
++(Sub32carry ...) => (SUBS ...)
++(Sub32withcarry ...) => (SBC ...)
++
++(Mul(32|16|8) ...) => (MUL ...)
++(Mul(32|64)F ...) => (MUL(F|D) ...)
++(Hmul(32|32u) ...) => (HMU(L|LU) ...)
++(Mul32uhilo ...) => (MULLU ...)
++
++(Div32 x y) =>
+ 	(SUB (XOR <typ.UInt32>                                                        // negate the result if one operand is negative
+ 		(Select0 <typ.UInt32> (CALLudiv
+ 			(SUB <typ.UInt32> (XOR x <typ.UInt32> (Signmask x)) (Signmask x))   // negate x if negative
+ 			(SUB <typ.UInt32> (XOR y <typ.UInt32> (Signmask y)) (Signmask y)))) // negate y if negative
+ 		(Signmask (XOR <typ.UInt32> x y))) (Signmask (XOR <typ.UInt32> x y)))
+-(Div32u x y) -> (Select0 <typ.UInt32> (CALLudiv x y))
+-(Div16 x y) -> (Div32 (SignExt16to32 x) (SignExt16to32 y))
+-(Div16u x y) -> (Div32u (ZeroExt16to32 x) (ZeroExt16to32 y))
+-(Div8 x y) -> (Div32 (SignExt8to32 x) (SignExt8to32 y))
+-(Div8u x y) -> (Div32u (ZeroExt8to32 x) (ZeroExt8to32 y))
+-(Div(32|64)F ...) -> (DIV(F|D) ...)
++(Div32u x y) => (Select0 <typ.UInt32> (CALLudiv x y))
++(Div16 x y) => (Div32 (SignExt16to32 x) (SignExt16to32 y))
++(Div16u x y) => (Div32u (ZeroExt16to32 x) (ZeroExt16to32 y))
++(Div8 x y) => (Div32 (SignExt8to32 x) (SignExt8to32 y))
++(Div8u x y) => (Div32u (ZeroExt8to32 x) (ZeroExt8to32 y))
++(Div(32|64)F ...) => (DIV(F|D) ...)
+ 
+ (Mod32 x y) ->
+ 	(SUB (XOR <typ.UInt32>                                                        // negate the result if x is negative
+-- 
+2.22.0.windows.1
+
