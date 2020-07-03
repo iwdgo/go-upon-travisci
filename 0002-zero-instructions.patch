@@ -1,0 +1,39 @@
+From 7366b6b9b6cab9901ae841f00b360123493343e8 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Fri, 3 Jul 2020 12:45:20 +0200
+Subject: [PATCH 2/2] zero instructions
+
+Change-Id: I9ad4ac55b85aea628030109b8026b3d19c6082f5
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index 87d9a6b169..c161617e21 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -267,16 +267,16 @@
+ (Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
+ 
+ // zero instructions
+-(Zero [0] _ mem) -> mem
+-(Zero [1] ptr mem) -> (MOVBstore ptr (MOVWconst [0]) mem)
+-(Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
++(Zero [0] _ mem) => mem
++(Zero [1] ptr mem) => (MOVBstore ptr (MOVWconst [0]) mem)
++(Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ 	(MOVHstore ptr (MOVWconst [0]) mem)
+ (Zero [2] ptr mem) =>
+ 	(MOVBstore [1] ptr (MOVWconst [0])
+ 		(MOVBstore [0] ptr (MOVWconst [0]) mem))
+-(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 ->
++(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 =>
+ 	(MOVWstore ptr (MOVWconst [0]) mem)
+-(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
++(Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 =>
+ 	(MOVHstore [2] ptr (MOVWconst [0])
+ 		(MOVHstore [0] ptr (MOVWconst [0]) mem))
+ (Zero [4] ptr mem) =>
+-- 
+2.22.0.windows.1
+
