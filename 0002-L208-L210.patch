@@ -1,0 +1,38 @@
+From b8ce1f13f813cdca6694052bbac0b1efc6083dc9 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Fri, 3 Jul 2020 10:00:07 +0200
+Subject: [PATCH 2/2] L208 - L210
+
+Change-Id: I236cda197994756e77ec49d7c45426c717b00bf6
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index 8ac3d91375..5ea1279658 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -171,7 +171,7 @@
+ // constants
+ (Const(8|16|32) ...) -> (MOVWconst ...)
+ (Const(32F|64F) ...) -> (MOV(F|D)const ...)
+-(ConstNil) => (MOVWconst [0])
++(ConstNil) -> (MOVWconst [0])
+ (ConstBool ...) -> (MOVWconst ...)
+ 
+ // truncations
+@@ -205,9 +205,9 @@
+ (Cvt32Fto64F ...) => (MOVFD ...)
+ (Cvt64Fto32F ...) => (MOVDF ...)
+ 
+-(Round(32|64)F ...) -> (Copy ...)
++(Round(32|64)F ...) => (Copy ...)
+ 
+-(CvtBoolToUint8 ...) -> (Copy ...)
++(CvtBoolToUint8 ...) => (Copy ...)
+ 
+ // fused-multiply-add
+ (FMA x y z) -> (FMULAD z x y)
+-- 
+2.22.0.windows.1
+
