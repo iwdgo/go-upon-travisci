@@ -1,0 +1,43 @@
+From 8673b46aa5b466f0e458d021224ce807b06ac542 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Fri, 3 Jul 2020 10:54:38 +0200
+Subject: [PATCH 2/2] - L268
+
+Change-Id: I83382a92c521267d36d5a90d98f580e9a23b503e
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index 5ea1279658..9768ebb6bf 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -210,7 +210,7 @@
+ (CvtBoolToUint8 ...) => (Copy ...)
+ 
+ // fused-multiply-add
+-(FMA x y z) -> (FMULAD z x y)
++(FMA x y z) => (FMULAD z x y)
+ 
+ // comparisons
+ (Eq8 x y)  => (Equal (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
+@@ -260,11 +260,11 @@
+ (Load <t> ptr mem) && is64BitFloat(t) => (MOVDload ptr mem)
+ 
+ // stores
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 -> (MOVBstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 -> (MOVHstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) -> (MOVWstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) -> (MOVFstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 => (MOVBstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 => (MOVHstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) => (MOVWstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) => (MOVFstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) => (MOVDstore ptr val mem)
+ 
+ // zero instructions
+ (Zero [0] _ mem) -> mem
+-- 
+2.22.0.windows.1
+
