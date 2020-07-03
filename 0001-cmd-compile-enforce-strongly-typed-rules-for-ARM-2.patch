@@ -1,7 +1,7 @@
 From 2926027013a23d54568ff8e53cbe6a4fa5f1f27f Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 08:10:47 +0200
-Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (2)
+Subject: [PATCH 1/2] cmd/compile: enforce strongly typed rules for ARM (2)
 
 Toolstash-check successful from L0 until L268
 

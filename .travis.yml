@@ -63,4 +63,3 @@ after_script:
   - toolstash-check -v -repo=$GOCLONE
   - echo "toolstash-check -all"
   # toolstash-check -all -repo=$GOCLONE
-  - git status
