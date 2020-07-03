@@ -1,0 +1,44 @@
+From 319733afba341fc233a355a835166dc73ffb2bff Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Fri, 3 Jul 2020 13:54:58 +0200
+Subject: [PATCH 2/2] L435 - L447
+
+Change-Id: I082c9d141bb449a7eb3571baa76cae5a5ce549ce
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index dd24e25502..2f42428523 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -432,19 +432,19 @@
+ (MOVDstore [off1] {sym} (ADDconst [off2] ptr) val mem) => (MOVDstore [off1+off2] {sym} ptr val mem)
+ (MOVDstore [off1] {sym} (SUBconst [off2] ptr) val mem) => (MOVDstore [off1-off2] {sym} ptr val mem)
+ 
+-(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVBload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+-(MOVBUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVBUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVBUload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+-(MOVHload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVHload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVHload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+-(MOVHUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVHUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVHUload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+-(MOVWload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVWload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVWload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+-(MOVFload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVFload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVFload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+-(MOVDload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVDload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVDload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+ 
+ (MOVBstore [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) val mem) && canMergeSym(sym1,sym2) ->
+-- 
+2.22.0.windows.1
+

@@ -1,28 +1,30 @@
-From 2de34294d7e1b2e8db714f001fbcc10b3a170a87 Mon Sep 17 00:00:00 2001
+From dd92f8b770e8e735994c8994b960c8c8db6feaf2 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 21:55:55 +0200
 Subject: [PATCH 1/2] cmd/compile: enforce strongly typed rules for ARM (3)
 
-Toolstash-check successful from L274 until L543.
+Toolstash-check successful from L270 until L543.
 
 Change-Id: Ic39ab86c80f970bfb21e318284f6bb3e8a994220
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 286 ++++++++++-----------
- 1 file changed, 143 insertions(+), 143 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 288 ++++++++++-----------
+ 1 file changed, 144 insertions(+), 144 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ab8bd0e81e..87d9a6b169 100644
+index ab8bd0e81e..dd24e25502 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -271,7 +271,7 @@
- (Zero [1] ptr mem) -> (MOVBstore ptr (MOVWconst [0]) mem)
+@@ -267,8 +267,8 @@
+ (Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
+ 
+ // zero instructions
+-(Zero [0] _ mem) -> mem
+-(Zero [1] ptr mem) -> (MOVBstore ptr (MOVWconst [0]) mem)
++(Zero [0] _ mem) => mem
++(Zero [1] ptr mem) => (MOVBstore ptr (MOVWconst [0]) mem)
  (Zero [2] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
  	(MOVHstore ptr (MOVWconst [0]) mem)
--(Zero [2] ptr mem) ->
-+(Zero [2] ptr mem) =>
- 	(MOVBstore [1] ptr (MOVWconst [0])
- 		(MOVBstore [0] ptr (MOVWconst [0]) mem))
- (Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%4 == 0 ->
+ (Zero [2] ptr mem) ->
 @@ -279,13 +279,13 @@
  (Zero [4] {t} ptr mem) && t.(*types.Type).Alignment()%2 == 0 ->
  	(MOVHstore [2] ptr (MOVWconst [0])
