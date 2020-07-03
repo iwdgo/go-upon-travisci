@@ -1,17 +1,17 @@
-From 9ef62f3df2df5023cdd2e63bcccc9acbe20839c8 Mon Sep 17 00:00:00 2001
+From d90007883bdb2c1249b96fc34765d070d0c379d8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 08:10:47 +0200
-Subject: [PATCH 1/2] cmd/compile: enforce strongly typed rules for ARM (2)
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (2)
 
 Toolstash-check successful from L0 until L268
 
 Change-Id: Ifc55ea1e4177c21107c521fc72da2da7b507b8ba
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 290 ++++++++++-----------
- 1 file changed, 145 insertions(+), 145 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 292 ++++++++++-----------
+ 1 file changed, 146 insertions(+), 146 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ab8bd0e81e..5ea1279658 100644
+index ab8bd0e81e..f18d2dd4b8 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -2,66 +2,66 @@
@@ -303,7 +303,8 @@ index ab8bd0e81e..5ea1279658 100644
 +(CvtBoolToUint8 ...) => (Copy ...)
  
  // fused-multiply-add
- (FMA x y z) -> (FMULAD z x y)
+-(FMA x y z) -> (FMULAD z x y)
++(FMA x y z) => (FMULAD z x y)
  
  // comparisons
 -(Eq8 x y)  -> (Equal (CMP (ZeroExt8to32 x) (ZeroExt8to32 y)))
