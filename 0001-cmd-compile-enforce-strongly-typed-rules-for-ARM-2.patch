@@ -1,4 +1,4 @@
-From 8d85b753d37094189e3502d8840e88c9dc573ac1 Mon Sep 17 00:00:00 2001
+From 9ef62f3df2df5023cdd2e63bcccc9acbe20839c8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 10 May 2020 08:10:47 +0200
 Subject: [PATCH 1/2] cmd/compile: enforce strongly typed rules for ARM (2)
@@ -7,11 +7,11 @@ Toolstash-check successful from L0 until L268
 
 Change-Id: Ifc55ea1e4177c21107c521fc72da2da7b507b8ba
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 288 ++++++++++-----------
- 1 file changed, 144 insertions(+), 144 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 290 ++++++++++-----------
+ 1 file changed, 145 insertions(+), 145 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index ab8bd0e81e..8ac3d91375 100644
+index ab8bd0e81e..5ea1279658 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -2,66 +2,66 @@
@@ -214,7 +214,7 @@ index ab8bd0e81e..8ac3d91375 100644
  
  // constant shifts
  // generic opt rewrites all constant shifts to shift by Const64
-@@ -156,54 +156,54 @@
+@@ -156,17 +156,17 @@
  (Rsh8Ux64 x (Const64 [c])) && uint64(c) < 8 -> (SRLconst (SLLconst <typ.UInt32> x [24]) [c+24])
  
  // large constant shifts
@@ -241,10 +241,7 @@ index ab8bd0e81e..8ac3d91375 100644
  
  // constants
  (Const(8|16|32) ...) -> (MOVWconst ...)
- (Const(32F|64F) ...) -> (MOV(F|D)const ...)
--(ConstNil) -> (MOVWconst [0])
-+(ConstNil) => (MOVWconst [0])
- (ConstBool ...) -> (MOVWconst ...)
+@@ -176,88 +176,88 @@
  
  // truncations
  // Because we ignore high parts of registers, truncates are just copies.
@@ -299,9 +296,13 @@ index ab8bd0e81e..8ac3d91375 100644
 +(Cvt32Fto64F ...) => (MOVFD ...)
 +(Cvt64Fto32F ...) => (MOVDF ...)
  
- (Round(32|64)F ...) -> (Copy ...)
+-(Round(32|64)F ...) -> (Copy ...)
++(Round(32|64)F ...) => (Copy ...)
  
-@@ -213,51 +213,51 @@
+-(CvtBoolToUint8 ...) -> (Copy ...)
++(CvtBoolToUint8 ...) => (Copy ...)
+ 
+ // fused-multiply-add
  (FMA x y z) -> (FMULAD z x y)
  
  // comparisons
