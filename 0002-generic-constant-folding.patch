@@ -1,4 +1,4 @@
-From afeb37a7e3d2246155f8ef2ffda480336ba48dbe Mon Sep 17 00:00:00 2001
+From fe7d0b89d22e162abc68c938c61a5be1e6b130e8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 06:37:56 +0200
 Subject: [PATCH 2/2] generic constant folding
@@ -9,7 +9,7 @@ Change-Id: Icd8fb05e43dbc3626b20ddb13a6dc0b1addf9f61
  1 file changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 30983ef94d..4d06bd6121 100644
+index 30983ef94d..c871502b99 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -728,10 +728,10 @@
@@ -20,10 +20,10 @@ index 30983ef94d..4d06bd6121 100644
 -(SUBconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) -> (ADDconst [int64(int32(-c))] x)
 -(ANDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) -> (BICconst [int64(int32(^uint32(c)))] x)
 -(BICconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) -> (ANDconst [int64(int32(^uint32(c)))] x)
-+(ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [int64(int32(-c))] x)
-+(SUBconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (ADDconst [int64(int32(-c))] x)
-+(ANDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) => (BICconst [int64(int32(^uint32(c)))] x)
-+(BICconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) => (ANDconst [int64(int32(^uint32(c)))] x)
++(ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [-c] x)
++(SUBconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (ADDconst [-c] x)
++(ANDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) => (BICconst [^uint32(c)] x)
++(BICconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) => (ANDconst [^uint32(c)] x)
  (ADDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff -> (SUBconst [int64(int32(-c))] x)
  (SUBconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff -> (ANDconst [int64(int32(-c))] x)
  (ANDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff -> (BICconst [int64(int32(^uint32(c)))] x)
