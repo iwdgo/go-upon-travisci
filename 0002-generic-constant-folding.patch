@@ -1,44 +1,38 @@
-From 6a48c450bb0fc6484b59ade2722b3a1ba880af78 Mon Sep 17 00:00:00 2001
+From eee49a498de306ea383d6c80b5bc10ed2a9d4cf8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
-Date: Sat, 4 Jul 2020 06:37:56 +0200
+Date: Sat, 4 Jul 2020 07:28:50 +0200
 Subject: [PATCH 2/2] generic constant folding
 
-Change-Id: Icd8fb05e43dbc3626b20ddb13a6dc0b1addf9f61
+Change-Id: I26ef1da09105b1733fc3fef1e4b1fe9e55b09336
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 16 ++++++++--------
- 1 file changed, 8 insertions(+), 8 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 30983ef94d..f91c5f7a71 100644
+index 30983ef94d..018b1fef2d 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -728,18 +728,18 @@
- (BICconst [c] _) && int32(c)==-1 => (MOVWconst [0])
- 
- // generic constant folding
--(ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) -> (SUBconst [int64(int32(-c))] x)
--(SUBconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) -> (ADDconst [int64(int32(-c))] x)
--(ANDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) -> (BICconst [int64(int32(^uint32(c)))] x)
--(BICconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) -> (ANDconst [int64(int32(^uint32(c)))] x)
-+(ADDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (SUBconst [-c] x)
-+(SUBconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(uint32(-c)) => (ADDconst [-c] x)
-+(ANDconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) => (BICconst [int32(^uint32(c))] x)
-+(BICconst [c] x) && !isARMImmRot(uint32(c)) && isARMImmRot(^uint32(c)) => (ANDconst [int32(^uint32(c))] x)
- (ADDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff -> (SUBconst [int64(int32(-c))] x)
- (SUBconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff -> (ANDconst [int64(int32(-c))] x)
- (ANDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff -> (BICconst [int64(int32(^uint32(c)))] x)
- (BICconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff -> (ANDconst [int64(int32(^uint32(c)))] x)
--(ADDconst [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(c+d))])
--(ADDconst [c] (ADDconst [d] x)) -> (ADDconst [int64(int32(c+d))] x)
--(ADDconst [c] (SUBconst [d] x)) -> (ADDconst [int64(int32(c-d))] x)
--(ADDconst [c] (RSBconst [d] x)) -> (RSBconst [int64(int32(c+d))] x)
-+(ADDconst [c] (MOVWconst [d])) => (MOVWconst [c+d])
-+(ADDconst [c] (ADDconst [d] x)) => (ADDconst [c+d] x)
-+(ADDconst [c] (SUBconst [d] x)) => (ADDconst [c-d] x)
-+(ADDconst [c] (RSBconst [d] x)) => (RSBconst [c+d] x)
- (ADCconst [c] (ADDconst [d] x) flags) -> (ADCconst [int64(int32(c+d))] x flags)
- (ADCconst [c] (SUBconst [d] x) flags) -> (ADCconst [int64(int32(c-d))] x flags)
- (SUBconst [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(d-c))])
+@@ -762,13 +762,13 @@
+ (MULS (MOVWconst [c]) (MOVWconst [d]) a) -> (SUBconst [int64(int32(c*d))] a)
+ (Select0 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) -> (MOVWconst [int64(int32(uint32(c)/uint32(d)))])
+ (Select1 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) -> (MOVWconst [int64(int32(uint32(c)%uint32(d)))])
+-(ANDconst [c] (MOVWconst [d])) -> (MOVWconst [c&d])
+-(ANDconst [c] (ANDconst [d] x)) -> (ANDconst [c&d] x)
+-(ORconst [c] (MOVWconst [d])) -> (MOVWconst [c|d])
+-(ORconst [c] (ORconst [d] x)) -> (ORconst [c|d] x)
+-(XORconst [c] (MOVWconst [d])) -> (MOVWconst [c^d])
+-(XORconst [c] (XORconst [d] x)) -> (XORconst [c^d] x)
+-(BICconst [c] (MOVWconst [d])) -> (MOVWconst [d&^c])
++(ANDconst [c] (MOVWconst [d])) => (MOVWconst [c&d])
++(ANDconst [c] (ANDconst [d] x)) => (ANDconst [c&d] x)
++(ORconst [c] (MOVWconst [d])) => (MOVWconst [c|d])
++(ORconst [c] (ORconst [d] x)) => (ORconst [c|d] x)
++(XORconst [c] (MOVWconst [d])) => (MOVWconst [c^d])
++(XORconst [c] (XORconst [d] x)) => (XORconst [c^d] x)
++(BICconst [c] (MOVWconst [d])) => (MOVWconst [d&^c])
+ (BICconst [c] (BICconst [d] x)) -> (BICconst [int64(int32(c|d))] x)
+ (MVN (MOVWconst [c])) -> (MOVWconst [^c])
+ (MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
 -- 
 2.22.0.windows.1
 
