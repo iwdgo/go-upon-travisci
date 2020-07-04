@@ -1,15 +1,15 @@
-From aee6729864940784acbfcc647dc3a0f2c34ec014 Mon Sep 17 00:00:00 2001
+From 4c0f25158584f006b8aa15a330f410f7ba855088 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 07:28:50 +0200
-Subject: [PATCH 2/2] generic constant folding L765-L770 L772, L777
+Subject: [PATCH 2/2] generic constant folding L765-L770 L772, L777 L1054-L1055
 
 Change-Id: I26ef1da09105b1733fc3fef1e4b1fe9e55b09336
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 25 +++++++++++-----------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 30983ef94d..610e17117e 100644
+index 30983ef94d..38d6f62274 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -663,8 +663,7 @@
@@ -52,6 +52,17 @@ index 30983ef94d..610e17117e 100644
  // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
  (BFX [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
  (BFXU [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))))])
+@@ -1052,8 +1051,8 @@
+ (BICshiftRL x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(uint32(c)>>uint64(d)))])
+ (BICshiftRA x (MOVWconst [c]) [d]) -> (BICconst x [int64(int32(c)>>uint64(d))])
+ (MVNshiftLL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)<<uint64(d))])
+-(MVNshiftRL (MOVWconst [c]) [d]) -> (MOVWconst [^int64(uint32(c)>>uint64(d))])
+-(MVNshiftRA (MOVWconst [c]) [d]) -> (MOVWconst [^int64(int32(c)>>uint64(d))])
++(MVNshiftRL (MOVWconst [c]) [d]) => (MOVWconst [^int64(uint32(c)>>uint64(d))])
++(MVNshiftRA (MOVWconst [c]) [d]) => (MOVWconst [^int64(int32(c)>>uint64(d))])
+ (CMPshiftLL x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(uint32(c)<<uint64(d)))])
+ (CMPshiftRL x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(uint32(c)>>uint64(d)))])
+ (CMPshiftRA x (MOVWconst [c]) [d]) -> (CMPconst x [int64(int32(c)>>uint64(d))])
 -- 
 2.22.0.windows.1
 
