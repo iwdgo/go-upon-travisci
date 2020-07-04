@@ -1,0 +1,148 @@
+From 84247d2a12bbc080f862871a72233616c2efcd2b Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Sat, 4 Jul 2020 11:29:40 +0200
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
+
+"mul by constant" until "div by constant"
+L549-L609
+Toolstash-check successful.
+
+Change-Id: I19ebb5694e383878f505d34df2591a51fe38431a
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 114 ++++++++++-----------
+ 1 file changed, 57 insertions(+), 57 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index ab8bd0e81e..cea536b7fe 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -544,69 +544,69 @@
+ 
+ // if a register move has only 1 use, just use the same register without emitting instruction
+ // MOVWnop doesn't emit instruction, only for ensuring the type.
+-(MOVWreg x) && x.Uses == 1 -> (MOVWnop x)
++(MOVWreg x) && x.Uses == 1 => (MOVWnop x)
+ 
+ // mul by constant
+-(MUL x (MOVWconst [c])) && int32(c) == -1 -> (RSBconst [0] x)
+-(MUL _ (MOVWconst [0])) -> (MOVWconst [0])
+-(MUL x (MOVWconst [1])) -> x
+-(MUL x (MOVWconst [c])) && isPowerOfTwo(c) -> (SLLconst [log2(c)] x)
+-(MUL x (MOVWconst [c])) && isPowerOfTwo(c-1) && int32(c) >= 3 -> (ADDshiftLL x x [log2(c-1)])
+-(MUL x (MOVWconst [c])) && isPowerOfTwo(c+1) && int32(c) >= 7 -> (RSBshiftLL x x [log2(c+1)])
+-(MUL x (MOVWconst [c])) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) -> (SLLconst [log2(c/3)] (ADDshiftLL <x.Type> x x [1]))
+-(MUL x (MOVWconst [c])) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) -> (SLLconst [log2(c/5)] (ADDshiftLL <x.Type> x x [2]))
+-(MUL x (MOVWconst [c])) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) -> (SLLconst [log2(c/7)] (RSBshiftLL <x.Type> x x [3]))
+-(MUL x (MOVWconst [c])) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (SLLconst [log2(c/9)] (ADDshiftLL <x.Type> x x [3]))
++(MUL x (MOVWconst [c])) && int32(c) == -1 => (RSBconst [0] x)
++(MUL _ (MOVWconst [0])) => (MOVWconst [0])
++(MUL x (MOVWconst [1])) => x
++(MUL x (MOVWconst [c])) && isPowerOfTwo(c) => (SLLconst [log2(c)] x)
++(MUL x (MOVWconst [c])) && isPowerOfTwo(c-1) && int32(c) >= 3 => (ADDshiftLL x x [log2(c-1)])
++(MUL x (MOVWconst [c])) && isPowerOfTwo(c+1) && int32(c) >= 7 => (RSBshiftLL x x [log2(c+1)])
++(MUL x (MOVWconst [c])) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) => (SLLconst [log2(c/3)] (ADDshiftLL <x.Type> x x [1]))
++(MUL x (MOVWconst [c])) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) => (SLLconst [log2(c/5)] (ADDshiftLL <x.Type> x x [2]))
++(MUL x (MOVWconst [c])) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) => (SLLconst [log2(c/7)] (RSBshiftLL <x.Type> x x [3]))
++(MUL x (MOVWconst [c])) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) => (SLLconst [log2(c/9)] (ADDshiftLL <x.Type> x x [3]))
+ 
+ (MULA x (MOVWconst [c]) a) && int32(c) == -1 -> (SUB a x)
+-(MULA _ (MOVWconst [0]) a) -> a
+-(MULA x (MOVWconst [1]) a) -> (ADD x a)
+-(MULA x (MOVWconst [c]) a) && isPowerOfTwo(c) -> (ADD (SLLconst <x.Type> [log2(c)] x) a)
+-(MULA x (MOVWconst [c]) a) && isPowerOfTwo(c-1) && int32(c) >= 3 -> (ADD (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
+-(MULA x (MOVWconst [c]) a) && isPowerOfTwo(c+1) && int32(c) >= 7 -> (ADD (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
+-(MULA x (MOVWconst [c]) a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
+-(MULA x (MOVWconst [c]) a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
+-(MULA x (MOVWconst [c]) a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
+-(MULA x (MOVWconst [c]) a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
+-
+-(MULA (MOVWconst [c]) x a) && int32(c) == -1 -> (SUB a x)
+-(MULA (MOVWconst [0]) _ a) -> a
+-(MULA (MOVWconst [1]) x a) -> (ADD x a)
+-(MULA (MOVWconst [c]) x a) && isPowerOfTwo(c) -> (ADD (SLLconst <x.Type> [log2(c)] x) a)
+-(MULA (MOVWconst [c]) x a) && isPowerOfTwo(c-1) && int32(c) >= 3 -> (ADD (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
+-(MULA (MOVWconst [c]) x a) && isPowerOfTwo(c+1) && int32(c) >= 7 -> (ADD (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
+-(MULA (MOVWconst [c]) x a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
+-(MULA (MOVWconst [c]) x a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
+-(MULA (MOVWconst [c]) x a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
+-(MULA (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (ADD (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
+-
+-(MULS x (MOVWconst [c]) a) && int32(c) == -1 -> (ADD a x)
+-(MULS _ (MOVWconst [0]) a) -> a
+-(MULS x (MOVWconst [1]) a) -> (RSB x a)
+-(MULS x (MOVWconst [c]) a) && isPowerOfTwo(c) -> (RSB (SLLconst <x.Type> [log2(c)] x) a)
+-(MULS x (MOVWconst [c]) a) && isPowerOfTwo(c-1) && int32(c) >= 3 -> (RSB (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
+-(MULS x (MOVWconst [c]) a) && isPowerOfTwo(c+1) && int32(c) >= 7 -> (RSB (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
+-(MULS x (MOVWconst [c]) a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
+-(MULS x (MOVWconst [c]) a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
+-(MULS x (MOVWconst [c]) a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
+-(MULS x (MOVWconst [c]) a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
+-
+-(MULS (MOVWconst [c]) x a) && int32(c) == -1 -> (ADD a x)
+-(MULS (MOVWconst [0]) _ a) -> a
+-(MULS (MOVWconst [1]) x a) -> (RSB x a)
+-(MULS (MOVWconst [c]) x a) && isPowerOfTwo(c) -> (RSB (SLLconst <x.Type> [log2(c)] x) a)
+-(MULS (MOVWconst [c]) x a) && isPowerOfTwo(c-1) && int32(c) >= 3 -> (RSB (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
+-(MULS (MOVWconst [c]) x a) && isPowerOfTwo(c+1) && int32(c) >= 7 -> (RSB (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
+-(MULS (MOVWconst [c]) x a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
+-(MULS (MOVWconst [c]) x a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
+-(MULS (MOVWconst [c]) x a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
+-(MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) -> (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
++(MULA _ (MOVWconst [0]) a) => a
++(MULA x (MOVWconst [1]) a) => (ADD x a)
++(MULA x (MOVWconst [c]) a) && isPowerOfTwo(c) => (ADD (SLLconst <x.Type> [log2(c)] x) a)
++(MULA x (MOVWconst [c]) a) && isPowerOfTwo(c-1) && int32(c) >= 3 => (ADD (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
++(MULA x (MOVWconst [c]) a) && isPowerOfTwo(c+1) && int32(c) >= 7 => (ADD (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
++(MULA x (MOVWconst [c]) a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
++(MULA x (MOVWconst [c]) a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
++(MULA x (MOVWconst [c]) a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
++(MULA x (MOVWconst [c]) a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
++
++(MULA (MOVWconst [c]) x a) && int32(c) == -1 => (SUB a x)
++(MULA (MOVWconst [0]) _ a) => a
++(MULA (MOVWconst [1]) x a) => (ADD x a)
++(MULA (MOVWconst [c]) x a) && isPowerOfTwo(c) => (ADD (SLLconst <x.Type> [log2(c)] x) a)
++(MULA (MOVWconst [c]) x a) && isPowerOfTwo(c-1) && int32(c) >= 3 => (ADD (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
++(MULA (MOVWconst [c]) x a) && isPowerOfTwo(c+1) && int32(c) >= 7 => (ADD (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
++(MULA (MOVWconst [c]) x a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
++(MULA (MOVWconst [c]) x a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
++(MULA (MOVWconst [c]) x a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
++(MULA (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) => (ADD (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
++
++(MULS x (MOVWconst [c]) a) && int32(c) == -1 => (ADD a x)
++(MULS _ (MOVWconst [0]) a) => a
++(MULS x (MOVWconst [1]) a) => (RSB x a)
++(MULS x (MOVWconst [c]) a) && isPowerOfTwo(c) => (RSB (SLLconst <x.Type> [log2(c)] x) a)
++(MULS x (MOVWconst [c]) a) && isPowerOfTwo(c-1) && int32(c) >= 3 => (RSB (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
++(MULS x (MOVWconst [c]) a) && isPowerOfTwo(c+1) && int32(c) >= 7 => (RSB (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
++(MULS x (MOVWconst [c]) a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
++(MULS x (MOVWconst [c]) a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
++(MULS x (MOVWconst [c]) a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
++(MULS x (MOVWconst [c]) a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
++
++(MULS (MOVWconst [c]) x a) && int32(c) == -1 => (ADD a x)
++(MULS (MOVWconst [0]) _ a) => a
++(MULS (MOVWconst [1]) x a) => (RSB x a)
++(MULS (MOVWconst [c]) x a) && isPowerOfTwo(c) => (RSB (SLLconst <x.Type> [log2(c)] x) a)
++(MULS (MOVWconst [c]) x a) && isPowerOfTwo(c-1) && int32(c) >= 3 => (RSB (ADDshiftLL <x.Type> x x [log2(c-1)]) a)
++(MULS (MOVWconst [c]) x a) && isPowerOfTwo(c+1) && int32(c) >= 7 => (RSB (RSBshiftLL <x.Type> x x [log2(c+1)]) a)
++(MULS (MOVWconst [c]) x a) && c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/3)] (ADDshiftLL <x.Type> x x [1])) a)
++(MULS (MOVWconst [c]) x a) && c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/5)] (ADDshiftLL <x.Type> x x [2])) a)
++(MULS (MOVWconst [c]) x a) && c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/7)] (RSBshiftLL <x.Type> x x [3])) a)
++(MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c) => (RSB (SLLconst <x.Type> [log2(c/9)] (ADDshiftLL <x.Type> x x [3])) a)
+ 
+ // div by constant
+-(Select0 (CALLudiv x (MOVWconst [1]))) -> x
+-(Select1 (CALLudiv _ (MOVWconst [1]))) -> (MOVWconst [0])
+-(Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (SRLconst [log2(c)] x)
+-(Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (ANDconst [c-1] x)
++(Select0 (CALLudiv x (MOVWconst [1]))) => x
++(Select1 (CALLudiv _ (MOVWconst [1]))) => (MOVWconst [0])
++(Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) => (SRLconst [log2(c)] x)
++(Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) => (ANDconst [c-1] x)
+ 
+ // constant comparisons
+ (CMPconst (MOVWconst [x]) [y]) => (FlagConstant [subFlags32(x,y)])
+-- 
+2.22.0.windows.1
+
