@@ -1,18 +1,29 @@
-From eee49a498de306ea383d6c80b5bc10ed2a9d4cf8 Mon Sep 17 00:00:00 2001
+From 5732472f45f135a4a2056e776bf38c9064bd876e Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 07:28:50 +0200
-Subject: [PATCH 2/2] generic constant folding
+Subject: [PATCH 2/2] generic constant folding L765-L770 L772-L777 (some type
+ casting to be removed)
 
 Change-Id: I26ef1da09105b1733fc3fef1e4b1fe9e55b09336
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 29 +++++++++++-----------
+ 1 file changed, 14 insertions(+), 15 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 30983ef94d..018b1fef2d 100644
+index 30983ef94d..e750849da7 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -762,13 +762,13 @@
+@@ -663,8 +663,7 @@
+ (GEnoov (FlagConstant [fc]) yes no) &&  fc.geNoov() => (First yes no)
+ (GEnoov (FlagConstant [fc]) yes no) && !fc.geNoov() => (First no yes)
+ 
+-// absorb InvertFlags into branches
+-(LT (InvertFlags cmp) yes no) => (GT cmp yes no)
++// absorb InvertFlags into branches(LT (InvertFlags cmp) yes no) => (GT cmp yes no)
+ (GT (InvertFlags cmp) yes no) => (LT cmp yes no)
+ (LE (InvertFlags cmp) yes no) => (GE cmp yes no)
+ (GE (InvertFlags cmp) yes no) => (LE cmp yes no)
+@@ -762,20 +761,20 @@
  (MULS (MOVWconst [c]) (MOVWconst [d]) a) -> (SUBconst [int64(int32(c*d))] a)
  (Select0 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) -> (MOVWconst [int64(int32(uint32(c)/uint32(d)))])
  (Select1 (CALLudiv (MOVWconst [c]) (MOVWconst [d]))) -> (MOVWconst [int64(int32(uint32(c)%uint32(d)))])
@@ -31,8 +42,21 @@ index 30983ef94d..018b1fef2d 100644
 +(XORconst [c] (XORconst [d] x)) => (XORconst [c^d] x)
 +(BICconst [c] (MOVWconst [d])) => (MOVWconst [d&^c])
  (BICconst [c] (BICconst [d] x)) -> (BICconst [int64(int32(c|d))] x)
- (MVN (MOVWconst [c])) -> (MOVWconst [^c])
- (MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
+-(MVN (MOVWconst [c])) -> (MOVWconst [^c])
+-(MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
+-(MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
+-(MOVHreg (MOVWconst [c])) -> (MOVWconst [int64(int16(c))])
+-(MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
+-(MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
++(MVN (MOVWconst [c])) => (MOVWconst [^c])
++(MOVBreg (MOVWconst [c])) => (MOVWconst [int64(int8(c))])
++(MOVBUreg (MOVWconst [c])) => (MOVWconst [int64(uint8(c))])
++(MOVHreg (MOVWconst [c])) => (MOVWconst [int64(int16(c))])
++(MOVHUreg (MOVWconst [c])) => (MOVWconst [int64(uint16(c))])
++(MOVWreg (MOVWconst [c])) => (MOVWconst [c])
+ // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
+ (BFX [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
+ (BFXU [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))))])
 -- 
 2.22.0.windows.1
 
