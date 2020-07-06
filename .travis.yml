@@ -47,4 +47,11 @@ after_success:
   - ./bin/go tool dist test
 
 after_script:
+  # Disable IPv4 and run net package tests
   - if [ "$TRAVIS_OS_NAME" = "windows" ]; then powershell Get-NetAdapterBinding -ComponentID "ms_tcpip6" -IncludeHidden ; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then powershell Set-NetAdapterBinding -ComponentID "ms_tcpip" -Enabled 0 -Name * -IncludeHidden ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sysctl -w net.ipv4.conf.all.disable_ip=1 ; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sysctl -w net.ipv4.conf.default.disable_ip=1 ; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then networksetup -listnetworkserviceorder ; fi
+  - ping localhost
+  - ./bin/go tool dist test -run="net"
