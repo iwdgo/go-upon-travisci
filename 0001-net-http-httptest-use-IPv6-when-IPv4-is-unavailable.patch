@@ -1,0 +1,65 @@
+From 1b9f799f9dd0ef70825d2a2fdd01ed6e5f7436f6 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Mon, 6 Jul 2020 08:55:02 +0200
+Subject: [PATCH] net/http/httptest: use IPv6 when IPv4 is unavailable
+
+Fixes #29759
+
+Change-Id: Idfc0abeaec7171fb62da6c04d251a347d6c9334e
+---
+ src/net/http/httptest/httptest.go | 27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
+
+diff --git a/src/net/http/httptest/httptest.go b/src/net/http/httptest/httptest.go
+index f7202da92f..403085b4f5 100644
+--- a/src/net/http/httptest/httptest.go
++++ b/src/net/http/httptest/httptest.go
+@@ -11,6 +11,7 @@ import (
+ 	"crypto/tls"
+ 	"io"
+ 	"io/ioutil"
++	"net"
+ 	"net/http"
+ 	"strings"
+ )
+@@ -73,7 +74,11 @@ func NewRequest(method, target string, body io.Reader) *http.Request {
+ 	// 192.0.2.0/24 is "TEST-NET" in RFC 5737 for use solely in
+ 	// documentation and example source code and should not be
+ 	// used publicly.
++
+ 	req.RemoteAddr = "192.0.2.1:1234"
++	if !isIP4Available() {
++		req.RemoteAddr = "2001:DB8::1/32" // RFC 3849 reserves 2001:DB8::/32 for IPv6
++	}
+ 
+ 	if req.Host == "" {
+ 		req.Host = "example.com"
+@@ -89,3 +94,25 @@ func NewRequest(method, target string, body io.Reader) *http.Request {
+ 
+ 	return req
+ }
++
++// isIP4Available returns true when an IPv4 address is returned by an interface
++func isIP4Available() bool {
++	interfaces, err := net.Interfaces()
++	if err != nil {
++		return false
++	}
++	var ipa net.IP
++	for i := 0; i < len(interfaces); i++ {
++		addrs, err := interfaces[i].Addrs()
++		if err != nil {
++			continue
++		}
++		for j := 0; j < len(addrs); j++ {
++			ipa = net.ParseIP(strings.Split(addrs[j].String(), "/")[0])
++			if ipa.To4() != nil {
++				return true
++			}
++		}
++	}
++	return false
++}
+-- 
+2.22.0.windows.1
+
