@@ -1,4 +1,4 @@
-From 1b9f799f9dd0ef70825d2a2fdd01ed6e5f7436f6 Mon Sep 17 00:00:00 2001
+From 8e1fa91c1e8d8a8233e29e801fdb19e09497999a Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 6 Jul 2020 08:55:02 +0200
 Subject: [PATCH] net/http/httptest: use IPv6 when IPv4 is unavailable
@@ -7,11 +7,12 @@ Fixes #29759
 
 Change-Id: Idfc0abeaec7171fb62da6c04d251a347d6c9334e
 ---
- src/net/http/httptest/httptest.go | 27 +++++++++++++++++++++++++++
- 1 file changed, 27 insertions(+)
+ src/net/http/httptest/httptest.go      | 27 ++++++++++++++++++++++++++
+ src/net/http/httptest/httptest_test.go |  5 ++++-
+ 2 files changed, 31 insertions(+), 1 deletion(-)
 
 diff --git a/src/net/http/httptest/httptest.go b/src/net/http/httptest/httptest.go
-index f7202da92f..403085b4f5 100644
+index f7202da92f..551d8b2344 100644
 --- a/src/net/http/httptest/httptest.go
 +++ b/src/net/http/httptest/httptest.go
 @@ -11,6 +11,7 @@ import (
@@ -29,7 +30,7 @@ index f7202da92f..403085b4f5 100644
 +
  	req.RemoteAddr = "192.0.2.1:1234"
 +	if !isIP4Available() {
-+		req.RemoteAddr = "2001:DB8::1/32" // RFC 3849 reserves 2001:DB8::/32 for IPv6
++		req.RemoteAddr = "2001:DB8::1:1234" // RFC 3849 reserves 2001:DB8::/32 for IPv6
 +	}
  
  	if req.Host == "" {
@@ -60,6 +61,22 @@ index f7202da92f..403085b4f5 100644
 +	}
 +	return false
 +}
+diff --git a/src/net/http/httptest/httptest_test.go b/src/net/http/httptest/httptest_test.go
+index ef7d943837..dddfa9dad7 100644
+--- a/src/net/http/httptest/httptest_test.go
++++ b/src/net/http/httptest/httptest_test.go
+@@ -173,7 +173,10 @@ func TestNewRequest(t *testing.T) {
+ 				t.Errorf("Request.TLS mismatch:\n got: %#v\nwant: %#v", got.TLS, tt.want.TLS)
+ 			}
+ 			if !reflect.DeepEqual(got, tt.want) {
+-				t.Errorf("Request mismatch:\n got: %#v\nwant: %#v", got, tt.want)
++				tt.want.RemoteAddr = "2001:DB8::1:1234"
++				if !reflect.DeepEqual(got, tt.want) {
++					t.Errorf("Request mismatch:\n got: %#v\nwant: %#v", got, tt.want)
++				}
+ 			}
+ 		})
+ 	}
 -- 
 2.22.0.windows.1
 
