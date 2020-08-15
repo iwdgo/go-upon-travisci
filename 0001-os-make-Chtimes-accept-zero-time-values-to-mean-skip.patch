@@ -1,6 +1,6 @@
-From 521b7c3c83b5347627c77bc8880ae533bf714c63 Mon Sep 17 00:00:00 2001
+From bb2c0a28e011a282f0511f63614afc67c03845c3 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
-Date: Wed, 19 Feb 2020 20:18:00 +0100
+Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
  file modification
 
@@ -15,16 +15,15 @@ Fixes #32558
 
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
- .gitcookies                                   |  1 +
  src/internal/syscall/unix/at_aix.go           |  1 +
  src/internal/syscall/unix/at_darwin.go        |  2 +
  src/internal/syscall/unix/at_freebsd.go       |  2 +
+ src/internal/syscall/unix/at_js.go            |  9 +++
  src/internal/syscall/unix/at_solaris.go       |  2 +
  .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
  src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
  src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
  .../syscall/unix/at_sysnum_openbsd.go         |  2 +
- src/internal/syscall/unix/nonblocking_js.go   |  2 +
  .../syscall/windows/syscall_windows.go        |  2 +
  src/os/file_plan9.go                          |  7 ++
  src/os/file_posix.go                          | 12 +++
@@ -34,16 +33,9 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/fs_js.go                          | 12 +++
  src/syscall/tables_js.go                      |  4 +
  src/syscall/types_windows.go                  |  3 +
- 19 files changed, 137 insertions(+)
- create mode 100644 .gitcookies
+ 18 files changed, 143 insertions(+)
+ create mode 100644 src/internal/syscall/unix/at_js.go
 
-diff --git a/.gitcookies b/.gitcookies
-new file mode 100644
-index 0000000000..d6371ebe12
---- /dev/null
-+++ b/.gitcookies
-@@ -0,0 +1 @@
-+.googlesource.com	TRUE	/	TRUE	2147483647	o	git-constantinkonstantinidis.gmail.com=1//03UEtowBzLrH2CgYIARAAGAMSNwF-L9IrivVvo_ylWQ-ZDp4mJ05KIUdci-4XLP-fxctDmxaeJwggTxgcMGw_MkMuyD2ozkKvv_E
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
 index 425df98211..fdfb8c5a0c 100644
 --- a/src/internal/syscall/unix/at_aix.go
@@ -80,6 +72,21 @@ index e171f4dbb5..6cc5e8aef5 100644
  )
  
  func Unlinkat(dirfd int, path string, flags int) error {
+diff --git a/src/internal/syscall/unix/at_js.go b/src/internal/syscall/unix/at_js.go
+new file mode 100644
+index 0000000000..b51f092e16
+--- /dev/null
++++ b/src/internal/syscall/unix/at_js.go
+@@ -0,0 +1,9 @@
++// Copyright 2018 The Go Authors. All rights reserved.
++// Use of this source code is governed by a BSD-style
++// license that can be found in the LICENSE file.
++
++package unix
++
++const (
++	UTIME_OMIT = -0x2
++)
 diff --git a/src/internal/syscall/unix/at_solaris.go b/src/internal/syscall/unix/at_solaris.go
 index e917c4fc9b..bde6f43a86 100644
 --- a/src/internal/syscall/unix/at_solaris.go
@@ -131,19 +138,6 @@ index c2d48b9914..fd389477ec 100644
  const AT_SYMLINK_NOFOLLOW = 0x02
 +
 +const UTIME_OMIT = -0x1
-diff --git a/src/internal/syscall/unix/nonblocking_js.go b/src/internal/syscall/unix/nonblocking_js.go
-index a360b53c3d..42ba73a663 100644
---- a/src/internal/syscall/unix/nonblocking_js.go
-+++ b/src/internal/syscall/unix/nonblocking_js.go
-@@ -6,6 +6,8 @@
- 
- package unix
- 
-+const UTIME_OMIT = -2
-+
- func IsNonblock(fd int) (nonblocking bool, err error) {
- 	return false, nil
- }
 diff --git a/src/internal/syscall/windows/syscall_windows.go b/src/internal/syscall/windows/syscall_windows.go
 index edf0b5a40b..f51f023da7 100644
 --- a/src/internal/syscall/windows/syscall_windows.go
