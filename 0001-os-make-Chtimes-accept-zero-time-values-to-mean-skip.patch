@@ -1,4 +1,4 @@
-From bb2c0a28e011a282f0511f63614afc67c03845c3 Mon Sep 17 00:00:00 2001
+From f84b903dd8a65a53f77472968602c777ecdd1e10 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -29,11 +29,11 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          | 12 +++
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 75 +++++++++++++++++++
+ src/os/os_test.go                             | 81 +++++++++++++++++++
  src/syscall/fs_js.go                          | 12 +++
  src/syscall/tables_js.go                      |  4 +
  src/syscall/types_windows.go                  |  3 +
- 18 files changed, 143 insertions(+)
+ 18 files changed, 149 insertions(+)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -233,10 +233,10 @@ index cc695fd94c..a8e60306ae 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..e9301d61e5 100644
+index e8c64510f5..0e11d73aab 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1277,6 +1277,81 @@ func TestFileChdir(t *testing.T) {
+@@ -1277,6 +1277,87 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
@@ -245,17 +245,24 @@ index e8c64510f5..e9301d61e5 100644
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())
 +
-+	file.Write([]byte("hello, world\n"))
++	_, err := file.Write([]byte("hello, world\n"))
++	if err != nil {
++		t.Fatalf("Write: %s", err)
++	}
 +	fs, err := Stat(file.Name())
 +	if err != nil {
 +		t.Fatal(err)
 +	}
-+	startAtime := Atime(fs)
++	var startAtime time.Time = Atime(fs)
 +	startMtime := fs.ModTime()
++	switch runtime.GOOS {
++	case "js":
++		startAtime = startAtime.Truncate(time.Second)
++		startMtime = startMtime.Truncate(time.Second)
++	}
 +	at0 := startAtime
 +	mt0 := startMtime
 +	t0 := startMtime.Truncate(time.Second).Add(1 * time.Hour)
-+	zt := time.Time{}
 +
 +	tests := []struct {
 +		aTime     time.Time
@@ -263,16 +270,15 @@ index e8c64510f5..e9301d61e5 100644
 +		wantATime time.Time
 +		wantMTime time.Time
 +	}{
-+		// Atime and ModTime change in sequence. A value that must not changed, is the next expected value.
 +		{
-+			aTime:     zt,
-+			mTime:     zt,
++			aTime:     time.Time{},
++			mTime:     time.Time{},
 +			wantATime: startAtime,
 +			wantMTime: startMtime,
 +		},
 +		{
 +			aTime:     t0.Add(200 * time.Second),
-+			mTime:     zt,
++			mTime:     time.Time{},
 +			wantATime: t0.Add(200 * time.Second),
 +			wantMTime: startMtime,
 +		},
@@ -342,7 +348,7 @@ index 262ec28afd..767b15ca82 100644
  	return err
  }
 diff --git a/src/syscall/tables_js.go b/src/syscall/tables_js.go
-index a7c4f8c890..4179057012 100644
+index a7c4f8c890..794bf70663 100644
 --- a/src/syscall/tables_js.go
 +++ b/src/syscall/tables_js.go
 @@ -492,3 +492,7 @@ var errnoByCode = map[string]Errno{
@@ -352,7 +358,7 @@ index a7c4f8c890..4179057012 100644
 +
 +// UTIME_OMIT is the sentinel value to indicate that a time value of a file should not
 +// be changed when using Chtimes.
-+const UTIME_OMIT = -2
++const UTIME_OMIT =  -0x2
 diff --git a/src/syscall/types_windows.go b/src/syscall/types_windows.go
 index 0349f3b180..424f4566f2 100644
 --- a/src/syscall/types_windows.go
