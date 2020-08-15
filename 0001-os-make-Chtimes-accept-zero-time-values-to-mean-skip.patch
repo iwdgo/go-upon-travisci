@@ -1,4 +1,4 @@
-From fcabe919170953a8ccb99be85e6be9d6076efc6c Mon Sep 17 00:00:00 2001
+From 521b7c3c83b5347627c77bc8880ae533bf714c63 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Wed, 19 Feb 2020 20:18:00 +0100
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -15,6 +15,7 @@ Fixes #32558
 
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
+ .gitcookies                                   |  1 +
  src/internal/syscall/unix/at_aix.go           |  1 +
  src/internal/syscall/unix/at_darwin.go        |  2 +
  src/internal/syscall/unix/at_freebsd.go       |  2 +
@@ -33,8 +34,16 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/fs_js.go                          | 12 +++
  src/syscall/tables_js.go                      |  4 +
  src/syscall/types_windows.go                  |  3 +
- 18 files changed, 136 insertions(+)
+ 19 files changed, 137 insertions(+)
+ create mode 100644 .gitcookies
 
+diff --git a/.gitcookies b/.gitcookies
+new file mode 100644
+index 0000000000..d6371ebe12
+--- /dev/null
++++ b/.gitcookies
+@@ -0,0 +1 @@
++.googlesource.com	TRUE	/	TRUE	2147483647	o	git-constantinkonstantinidis.gmail.com=1//03UEtowBzLrH2CgYIARAAGAMSNwF-L9IrivVvo_ylWQ-ZDp4mJ05KIUdci-4XLP-fxctDmxaeJwggTxgcMGw_MkMuyD2ozkKvv_E
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
 index 425df98211..fdfb8c5a0c 100644
 --- a/src/internal/syscall/unix/at_aix.go
@@ -230,7 +239,7 @@ index cc695fd94c..a8e60306ae 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..1d9d9d0724 100644
+index e8c64510f5..e9301d61e5 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
 @@ -1277,6 +1277,81 @@ func TestFileChdir(t *testing.T) {
@@ -251,7 +260,7 @@ index e8c64510f5..1d9d9d0724 100644
 +	startMtime := fs.ModTime()
 +	at0 := startAtime
 +	mt0 := startMtime
-+	t0 := startMtime.Truncate(time.Second)
++	t0 := startMtime.Truncate(time.Second).Add(1 * time.Hour)
 +	zt := time.Time{}
 +
 +	tests := []struct {
@@ -286,7 +295,7 @@ index e8c64510f5..1d9d9d0724 100644
 +		},
 +	}
 +
-+	for _, tt := range tests {
++	for i, tt := range tests {
 +		tt := tt
 +
 +		// Now change the times accordingly.
@@ -303,10 +312,10 @@ index e8c64510f5..1d9d9d0724 100644
 +		mt0 = fs.ModTime()
 +
 +		if got, want := at0, tt.wantATime; !got.Equal(want) {
-+			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			t.Errorf("AccessTime mismatch (%d):\ngot:  %q\nwant: %q", i, got, want)
 +		}
 +		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
-+			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			t.Errorf("ModTime mismatch  (%d):\ngot:  %q\nwant: %q", i, got, want)
 +		}
 +
 +	}
