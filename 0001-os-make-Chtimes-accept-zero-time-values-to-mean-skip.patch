@@ -1,4 +1,4 @@
-From f84b903dd8a65a53f77472968602c777ecdd1e10 Mon Sep 17 00:00:00 2001
+From 4658020bf72d30e06d9d4073283d3d7c01ca6c8d Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -233,7 +233,7 @@ index cc695fd94c..a8e60306ae 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..0e11d73aab 100644
+index e8c64510f5..105c04fde3 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
 @@ -1277,6 +1277,87 @@ func TestFileChdir(t *testing.T) {
@@ -295,27 +295,27 @@ index e8c64510f5..0e11d73aab 100644
 +		},
 +	}
 +
-+	for i, tt := range tests {
-+		tt := tt
++	for _, tt := range tests {
++		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
 +
 +		// Now change the times accordingly.
 +		if err := Chtimes(file.Name(), tt.aTime, tt.mTime); err != nil {
-+			t.Fatal(err)
++			t.Error(err)
 +		}
 +
 +		// Finally verify the expectations.
 +		fs, err = Stat(file.Name())
 +		if err != nil {
-+			t.Fatal(err)
++			t.Error(err)
 +		}
 +		at0 = Atime(fs)
 +		mt0 = fs.ModTime()
 +
 +		if got, want := at0, tt.wantATime; !got.Equal(want) {
-+			t.Errorf("AccessTime mismatch (%d):\ngot:  %q\nwant: %q", i, got, want)
++			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
 +		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
-+			t.Errorf("ModTime mismatch  (%d):\ngot:  %q\nwant: %q", i, got, want)
++			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
 +
 +	}
