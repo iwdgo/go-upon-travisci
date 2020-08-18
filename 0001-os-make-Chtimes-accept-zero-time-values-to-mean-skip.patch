@@ -1,4 +1,4 @@
-From 84fe0ec34414e0a0be9282f594d0462ea2bf0224 Mon Sep 17 00:00:00 2001
+From 9cf6d43fccc87a84d8b6de22ee9fd0c52fdc0579 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -29,9 +29,9 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
  src/os/os_test.go                             | 80 +++++++++++++++++++
- src/syscall/fs_js.go                          | 12 +++
+ src/syscall/fs_js.go                          | 13 +++
  src/syscall/types_windows.go                  |  3 +
- 16 files changed, 141 insertions(+), 2 deletions(-)
+ 16 files changed, 142 insertions(+), 2 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -309,10 +309,18 @@ index e8c64510f5..0af3cb5375 100644
  	// TODO(brainman): file.Chdir() is not implemented on windows.
  	if runtime.GOOS == "windows" {
 diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
-index 262ec28afd..767b15ca82 100644
+index 262ec28afd..70dbe15682 100644
 --- a/src/syscall/fs_js.go
 +++ b/src/syscall/fs_js.go
-@@ -282,6 +282,18 @@ func UtimesNano(path string, ts []Timespec) error {
+@@ -274,6 +274,7 @@ func Lchown(path string, uid, gid int) error {
+ }
+ 
+ func UtimesNano(path string, ts []Timespec) error {
++	const UTIME_OMIT =  -0x2
+ 	if err := checkPath(path); err != nil {
+ 		return err
+ 	}
+@@ -282,6 +283,18 @@ func UtimesNano(path string, ts []Timespec) error {
  	}
  	atime := ts[0].Sec
  	mtime := ts[1].Sec
