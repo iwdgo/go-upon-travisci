@@ -9,9 +9,7 @@ os:
 go: 1.13.x
 
 env:
-  - GO111MODULE=off
-  - GOOS=js
-  - GOARCH=wasm
+  - GO111MODULE=off GOOS=js GOARCH=wasm
 
 install:
   - echo ""
