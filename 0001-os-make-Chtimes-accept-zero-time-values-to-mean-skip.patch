@@ -1,4 +1,4 @@
-From dee3cbfb65bd8a77326117aa59a65ffc8a2ab3d8 Mon Sep 17 00:00:00 2001
+From df1a5ebd2f61261340cb2b52d45d1540e22d6722 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -24,10 +24,10 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
  src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
  .../syscall/unix/at_sysnum_openbsd.go         |  2 +
- .../syscall/windows/syscall_windows.go        |  2 +
  src/os/file_plan9.go                          |  7 ++
  src/os/file_posix.go                          | 19 ++++-
  src/os/file_unix.go                           |  2 +
+ src/os/file_windows.go                        |  2 +
  src/os/os_test.go                             | 80 +++++++++++++++++++
  src/syscall/fs_js.go                          | 12 +++
  src/syscall/tables_js.go                      |  4 +
@@ -137,19 +137,6 @@ index c2d48b9914..fd389477ec 100644
  const AT_SYMLINK_NOFOLLOW = 0x02
 +
 +const UTIME_OMIT = -0x1
-diff --git a/src/internal/syscall/windows/syscall_windows.go b/src/internal/syscall/windows/syscall_windows.go
-index edf0b5a40b..f51f023da7 100644
---- a/src/internal/syscall/windows/syscall_windows.go
-+++ b/src/internal/syscall/windows/syscall_windows.go
-@@ -323,6 +323,8 @@ const (
- 	VOLUME_NAME_GUID = 0x1
- 	VOLUME_NAME_NONE = 0x4
- 	VOLUME_NAME_NT   = 0x2
-+
-+	UTIME_OMIT = 0
- )
- 
- //sys	GetFinalPathNameByHandle(file syscall.Handle, filePath *uint16, filePathSize uint32, flags uint32) (n uint32, err error) = kernel32.GetFinalPathNameByHandleW
 diff --git a/src/os/file_plan9.go b/src/os/file_plan9.go
 index eb158905ab..5279db7586 100644
 --- a/src/os/file_plan9.go
@@ -176,7 +163,7 @@ index eb158905ab..5279db7586 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index 24ea554b62..cfa2081260 100644
+index 24ea554b62..724408c3d2 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
 @@ -163,14 +163,29 @@ func (f *File) Sync() error {
@@ -192,7 +179,7 @@ index 24ea554b62..cfa2081260 100644
  	var utimes [2]syscall.Timespec
 -	utimes[0] = syscall.NsecToTimespec(atime.UnixNano())
 -	utimes[1] = syscall.NsecToTimespec(mtime.UnixNano())
-+	utimeOmit := syscall.Timespec{Sec: _UTIME_OMIT, Nsec: 0}
++	utimeOmit := syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
 +	if atime.IsZero() {
 +		utimes[0] = utimeOmit
 +	}
@@ -224,6 +211,19 @@ index f2c00ae0cb..7b172b895b 100644
  // fixLongPath is a noop on non-Windows platforms.
  func fixLongPath(path string) string {
  	return path
+diff --git a/src/os/file_windows.go b/src/os/file_windows.go
+index cc695fd94c..00d2fb5ec0 100644
+--- a/src/os/file_windows.go
++++ b/src/os/file_windows.go
+@@ -14,6 +14,8 @@ import (
+ 	"unsafe"
+ )
+ 
++const _UTIME_OMIT = 0
++
+ // file is the real representation of *File.
+ // The extra level of indirection ensures that no clients of os
+ // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
 index e8c64510f5..0af3cb5375 100644
 --- a/src/os/os_test.go
