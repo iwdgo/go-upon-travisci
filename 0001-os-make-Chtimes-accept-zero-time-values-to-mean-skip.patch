@@ -1,4 +1,4 @@
-From df1a5ebd2f61261340cb2b52d45d1540e22d6722 Mon Sep 17 00:00:00 2001
+From da48ea10b31f82249ac32fb2f3125e4d659995f2 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -25,14 +25,14 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
  .../syscall/unix/at_sysnum_openbsd.go         |  2 +
  src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 19 ++++-
+ src/os/file_posix.go                          | 13 ++-
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
  src/os/os_test.go                             | 80 +++++++++++++++++++
  src/syscall/fs_js.go                          | 12 +++
  src/syscall/tables_js.go                      |  4 +
  src/syscall/types_windows.go                  |  3 +
- 17 files changed, 151 insertions(+), 2 deletions(-)
+ 17 files changed, 145 insertions(+), 2 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -163,10 +163,10 @@ index eb158905ab..5279db7586 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index 24ea554b62..724408c3d2 100644
+index 24ea554b62..537c29553e 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
-@@ -163,14 +163,29 @@ func (f *File) Sync() error {
+@@ -163,14 +163,23 @@ func (f *File) Sync() error {
  
  // Chtimes changes the access and modification times of the named
  // file, similar to the Unix utime() or utimes() functions.
@@ -180,12 +180,6 @@ index 24ea554b62..724408c3d2 100644
 -	utimes[0] = syscall.NsecToTimespec(atime.UnixNano())
 -	utimes[1] = syscall.NsecToTimespec(mtime.UnixNano())
 +	utimeOmit := syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
-+	if atime.IsZero() {
-+		utimes[0] = utimeOmit
-+	}
-+	if mtime.IsZero() {
-+		utimes[1] = utimeOmit
-+	}
 +	set := func(i int, t time.Time) {
 +		if t.IsZero() {
 +			utimes[i] = utimeOmit
