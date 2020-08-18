@@ -9,7 +9,7 @@ os:
 go: 1.13.x
 
 env:
-  - GO111MODULE=off GOOS=js GOARCH=wasm
+  - GO111MODULE=off
 
 install:
   - echo ""
@@ -38,6 +38,8 @@ before_script:
 script:
   - pwd
   - cd src
+  - export GOOS=js
+  - export GOARCH=wasm
   - sh ./make.bash
 
 after_success:
