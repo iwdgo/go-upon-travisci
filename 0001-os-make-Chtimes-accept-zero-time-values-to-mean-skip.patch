@@ -1,4 +1,4 @@
-From 9cf6d43fccc87a84d8b6de22ee9fd0c52fdc0579 Mon Sep 17 00:00:00 2001
+From 1c4a05fc67a1d6667e87274a43d98652b395aed6 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -309,14 +309,14 @@ index e8c64510f5..0af3cb5375 100644
  	// TODO(brainman): file.Chdir() is not implemented on windows.
  	if runtime.GOOS == "windows" {
 diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
-index 262ec28afd..70dbe15682 100644
+index 262ec28afd..9ca6165dc2 100644
 --- a/src/syscall/fs_js.go
 +++ b/src/syscall/fs_js.go
 @@ -274,6 +274,7 @@ func Lchown(path string, uid, gid int) error {
  }
  
  func UtimesNano(path string, ts []Timespec) error {
-+	const UTIME_OMIT =  -0x2
++	const UTIME_OMIT = -0x2
  	if err := checkPath(path); err != nil {
  		return err
  	}
