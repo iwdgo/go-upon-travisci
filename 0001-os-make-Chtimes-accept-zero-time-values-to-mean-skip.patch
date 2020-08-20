@@ -1,4 +1,4 @@
-From da48ea10b31f82249ac32fb2f3125e4d659995f2 Mon Sep 17 00:00:00 2001
+From cc5149bd56b44e107daf3cd7280d4c43635f7e14 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -9,7 +9,7 @@ This change allows Chtimes to accept zero time values for its arguments, so:
     os.Chtimes(filename, time.Time{}, tn)
     os.Chtimes(filename, tn, time.Time{})
 which will avoid making time modifications of the file's
-AccessTime and ModTime respectively or both when combined.
+AccessTime and ModTime respectively.
 
 Fixes #32558
 
@@ -18,21 +18,20 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_aix.go           |  1 +
  src/internal/syscall/unix/at_darwin.go        |  2 +
  src/internal/syscall/unix/at_freebsd.go       |  2 +
- src/internal/syscall/unix/at_js.go            |  9 +++
+ src/internal/syscall/unix/at_js.go            |  9 ++
  src/internal/syscall/unix/at_solaris.go       |  2 +
  .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
  src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
  src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
  .../syscall/unix/at_sysnum_openbsd.go         |  2 +
  src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 13 ++-
+ src/os/file_posix.go                          | 12 ++-
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 80 +++++++++++++++++++
- src/syscall/fs_js.go                          | 12 +++
- src/syscall/tables_js.go                      |  4 +
- src/syscall/types_windows.go                  |  3 +
- 17 files changed, 145 insertions(+), 2 deletions(-)
+ src/os/os_test.go                             | 82 +++++++++++++++++++
+ src/syscall/fs_js.go                          | 13 +++
+ src/syscall/syscall_windows.go                | 20 ++++-
+ 16 files changed, 156 insertions(+), 6 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -163,10 +162,10 @@ index eb158905ab..5279db7586 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index 24ea554b62..537c29553e 100644
+index 24ea554b62..ed9c84ced0 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
-@@ -163,14 +163,23 @@ func (f *File) Sync() error {
+@@ -163,14 +163,22 @@ func (f *File) Sync() error {
  
  // Chtimes changes the access and modification times of the named
  // file, similar to the Unix utime() or utimes() functions.
@@ -179,10 +178,9 @@ index 24ea554b62..537c29553e 100644
  	var utimes [2]syscall.Timespec
 -	utimes[0] = syscall.NsecToTimespec(atime.UnixNano())
 -	utimes[1] = syscall.NsecToTimespec(mtime.UnixNano())
-+	utimeOmit := syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
 +	set := func(i int, t time.Time) {
 +		if t.IsZero() {
-+			utimes[i] = utimeOmit
++			utimes[i] = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
 +		} else {
 +			utimes[i] = syscall.NsecToTimespec(t.UnixNano())
 +		}
@@ -219,10 +217,10 @@ index cc695fd94c..00d2fb5ec0 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..0af3cb5375 100644
+index e8c64510f5..cee80ca72c 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1277,6 +1277,86 @@ func TestFileChdir(t *testing.T) {
+@@ -1277,6 +1277,88 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
@@ -235,11 +233,13 @@ index e8c64510f5..0af3cb5375 100644
 +	if err != nil {
 +		t.Fatalf("Write: %s", err)
 +	}
-+	fs, err := Stat(file.Name())
++	fName := file.Name()
++	file.Close()
++	fs, err := Stat(fName)
 +	if err != nil {
 +		t.Fatal(err)
 +	}
-+	var startAtime time.Time = Atime(fs)
++	startAtime := Atime(fs)
 +	startMtime := fs.ModTime()
 +	switch runtime.GOOS {
 +	case "js":
@@ -285,12 +285,12 @@ index e8c64510f5..0af3cb5375 100644
 +		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
 +
 +		// Now change the times accordingly.
-+		if err := Chtimes(file.Name(), tt.aTime, tt.mTime); err != nil {
++		if err := Chtimes(fName, tt.aTime, tt.mTime); err != nil {
 +			t.Error(err)
 +		}
 +
 +		// Finally verify the expectations.
-+		fs, err = Stat(file.Name())
++		fs, err = Stat(fName)
 +		if err != nil {
 +			t.Error(err)
 +		}
@@ -310,10 +310,18 @@ index e8c64510f5..0af3cb5375 100644
  	// TODO(brainman): file.Chdir() is not implemented on windows.
  	if runtime.GOOS == "windows" {
 diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
-index 262ec28afd..767b15ca82 100644
+index 262ec28afd..9ca6165dc2 100644
 --- a/src/syscall/fs_js.go
 +++ b/src/syscall/fs_js.go
-@@ -282,6 +282,18 @@ func UtimesNano(path string, ts []Timespec) error {
+@@ -274,6 +274,7 @@ func Lchown(path string, uid, gid int) error {
+ }
+ 
+ func UtimesNano(path string, ts []Timespec) error {
++	const UTIME_OMIT = -0x2
+ 	if err := checkPath(path); err != nil {
+ 		return err
+ 	}
+@@ -282,6 +283,18 @@ func UtimesNano(path string, ts []Timespec) error {
  	}
  	atime := ts[0].Sec
  	mtime := ts[1].Sec
@@ -332,32 +340,44 @@ index 262ec28afd..767b15ca82 100644
  	_, err := fsCall("utimes", path, atime, mtime)
  	return err
  }
-diff --git a/src/syscall/tables_js.go b/src/syscall/tables_js.go
-index a7c4f8c890..794bf70663 100644
---- a/src/syscall/tables_js.go
-+++ b/src/syscall/tables_js.go
-@@ -492,3 +492,7 @@ var errnoByCode = map[string]Errno{
- 	"ECASECLASH":      ECASECLASH,
- 	"EWOULDBLOCK":     EWOULDBLOCK,
- }
-+
-+// UTIME_OMIT is the sentinel value to indicate that a time value of a file should not
-+// be changed when using Chtimes.
-+const UTIME_OMIT =  -0x2
-diff --git a/src/syscall/types_windows.go b/src/syscall/types_windows.go
-index 0349f3b180..424f4566f2 100644
---- a/src/syscall/types_windows.go
-+++ b/src/syscall/types_windows.go
-@@ -362,6 +362,9 @@ func (ft *Filetime) Nanoseconds() int64 {
+diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
+index f62c00d72f..c082ee186a 100644
+--- a/src/syscall/syscall_windows.go
++++ b/src/syscall/syscall_windows.go
+@@ -587,8 +587,14 @@ func Utimes(path string, tv []Timeval) (err error) {
+ 		return e
+ 	}
+ 	defer Close(h)
+-	a := NsecToFiletime(tv[0].Nanoseconds())
+-	w := NsecToFiletime(tv[1].Nanoseconds())
++	a := Filetime{}
++	w := Filetime{}
++	if tv[0].Nanoseconds() != 0 {
++		a = NsecToFiletime(tv[0].Nanoseconds())
++	}
++	if tv[1].Nanoseconds() != 0 {
++		w = NsecToFiletime(tv[1].Nanoseconds())
++	}
+ 	return SetFileTime(h, nil, &a, &w)
  }
  
- func NsecToFiletime(nsec int64) (ft Filetime) {
-+	if nsec == 0 {
-+		return
+@@ -607,8 +613,14 @@ func UtimesNano(path string, ts []Timespec) (err error) {
+ 		return e
+ 	}
+ 	defer Close(h)
+-	a := NsecToFiletime(TimespecToNsec(ts[0]))
+-	w := NsecToFiletime(TimespecToNsec(ts[1]))
++	a := Filetime{}
++	w := Filetime{}
++	if TimespecToNsec(ts[0]) != 0 {
++		a = NsecToFiletime(TimespecToNsec(ts[0]))
 +	}
- 	// convert into 100-nanosecond
- 	nsec /= 100
- 	// change starting time to January 1, 1601
++	if TimespecToNsec(ts[1]) != 0 {
++		w = NsecToFiletime(TimespecToNsec(ts[1]))
++	}
+ 	return SetFileTime(h, nil, &a, &w)
+ }
+ 
 -- 
 2.22.0.windows.1
 
