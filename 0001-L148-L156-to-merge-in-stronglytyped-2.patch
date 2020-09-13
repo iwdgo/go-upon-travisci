@@ -1,4 +1,4 @@
-From 8d18c743ba56690be064c065e57c2e0f7b428087 Mon Sep 17 00:00:00 2001
+From 3dabb3a6c53ac2a2ec52e6d1d3be725d82e4c17e Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 11:01:29 +0200
 Subject: [PATCH] L148-L156: to merge in stronglytyped-2
@@ -20,7 +20,7 @@ Change-Id: Ib6544c1d7853c2811def5b18786e1fc5c18086ca
  2 files changed, 40 insertions(+), 40 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..9176e54241 100644
+index 983f884849..d69e112035 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -145,15 +145,15 @@
@@ -36,20 +36,20 @@ index 983f884849..9176e54241 100644
 -(Lsh8x64 x (Const64 [c])) && uint64(c) < 8 -> (SLLconst x [c])
 -(Rsh8x64 x (Const64 [c])) && uint64(c) < 8 -> (SRAconst (SLLconst <typ.UInt32> x [24]) [c+24])
 -(Rsh8Ux64 x (Const64 [c])) && uint64(c) < 8 -> (SRLconst (SLLconst <typ.UInt32> x [24]) [c+24])
-+(Lsh32x64 x (Const64 [c])) && uint64(c) < 32 => (SLLconst x [uint32(c)])
-+(Rsh32x64 x (Const64 [c])) && uint64(c) < 32 => (SRAconst x [uint32(c)])
-+(Rsh32Ux64 x (Const64 [c])) && uint64(c) < 32 => (SRLconst x [uint32(c)])
-+(Lsh16x64 x (Const64 [c])) && uint64(c) < 16 => (SLLconst x [uint32(c)])
-+(Rsh16x64 x (Const64 [c])) && uint64(c) < 16 => (SRAconst (SLLconst <typ.UInt32> x [16]) [uint32(c+16)])
-+(Rsh16Ux64 x (Const64 [c])) && uint64(c) < 16 => (SRLconst (SLLconst <typ.UInt32> x [16]) [uint32(c+16)])
-+(Lsh8x64 x (Const64 [c])) && uint64(c) < 8 => (SLLconst x [uint32(c)])
-+(Rsh8x64 x (Const64 [c])) && uint64(c) < 8 => (SRAconst (SLLconst <typ.UInt32> x [24]) [uint32(c+24)])
-+(Rsh8Ux64 x (Const64 [c])) && uint64(c) < 8 => (SRLconst (SLLconst <typ.UInt32> x [24]) [uint32(c+24)])
++(Lsh32x64 x (Const64 [c])) && uint64(c) < 32 => (SLLconst x [int32(c)])
++(Rsh32x64 x (Const64 [c])) && uint64(c) < 32 => (SRAconst x [int32(c)])
++(Rsh32Ux64 x (Const64 [c])) && uint64(c) < 32 => (SRLconst x [int32(c)])
++(Lsh16x64 x (Const64 [c])) && uint64(c) < 16 => (SLLconst x [int32(c)])
++(Rsh16x64 x (Const64 [c])) && uint64(c) < 16 => (SRAconst (SLLconst <typ.UInt32> x [16]) [int32(c+16)])
++(Rsh16Ux64 x (Const64 [c])) && uint64(c) < 16 => (SRLconst (SLLconst <typ.UInt32> x [16]) [int32(c+16)])
++(Lsh8x64 x (Const64 [c])) && uint64(c) < 8 => (SLLconst x [int32(c)])
++(Rsh8x64 x (Const64 [c])) && uint64(c) < 8 => (SRAconst (SLLconst <typ.UInt32> x [24]) [int32(c+24)])
++(Rsh8Ux64 x (Const64 [c])) && uint64(c) < 8 => (SRLconst (SLLconst <typ.UInt32> x [24]) [int32(c+24)])
  
  // large constant shifts
  (Lsh32x64 _ (Const64 [c])) && uint64(c) >= 32 -> (Const32 [0])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..5d1cf6ee74 100644
+index eaf20e27b7..b07bc2c428 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -13930,18 +13930,18 @@ func rewriteValueARM_OpLsh16x64(v *Value) bool {
@@ -57,7 +57,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Lsh16x64 x (Const64 [c]))
  	// cond: uint64(c) < 16
 -	// result: (SLLconst x [c])
-+	// result: (SLLconst x [uint32(c)])
++	// result: (SLLconst x [int32(c)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -70,7 +70,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSLLconst)
 -		v.AuxInt = c
-+		v.AuxInt = int32ToAuxInt(uint32(c))
++		v.AuxInt = int32ToAuxInt(int32(c))
  		v.AddArg(x)
  		return true
  	}
@@ -79,7 +79,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Lsh32x64 x (Const64 [c]))
  	// cond: uint64(c) < 32
 -	// result: (SLLconst x [c])
-+	// result: (SLLconst x [uint32(c)])
++	// result: (SLLconst x [int32(c)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -92,7 +92,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSLLconst)
 -		v.AuxInt = c
-+		v.AuxInt = int32ToAuxInt(uint32(c))
++		v.AuxInt = int32ToAuxInt(int32(c))
  		v.AddArg(x)
  		return true
  	}
@@ -101,7 +101,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Lsh8x64 x (Const64 [c]))
  	// cond: uint64(c) < 8
 -	// result: (SLLconst x [c])
-+	// result: (SLLconst x [uint32(c)])
++	// result: (SLLconst x [int32(c)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -114,7 +114,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSLLconst)
 -		v.AuxInt = c
-+		v.AuxInt = int32ToAuxInt(uint32(c))
++		v.AuxInt = int32ToAuxInt(int32(c))
  		v.AddArg(x)
  		return true
  	}
@@ -123,7 +123,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Rsh16Ux64 x (Const64 [c]))
  	// cond: uint64(c) < 16
 -	// result: (SRLconst (SLLconst <typ.UInt32> x [16]) [c+16])
-+	// result: (SRLconst (SLLconst <typ.UInt32> x [16]) [uint32(c+16)])
++	// result: (SRLconst (SLLconst <typ.UInt32> x [16]) [int32(c+16)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -136,7 +136,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSRLconst)
 -		v.AuxInt = c + 16
-+		v.AuxInt = int32ToAuxInt(uint32(c + 16))
++		v.AuxInt = int32ToAuxInt(int32(c + 16))
  		v0 := b.NewValue0(v.Pos, OpARMSLLconst, typ.UInt32)
 -		v0.AuxInt = 16
 +		v0.AuxInt = int32ToAuxInt(16)
@@ -148,7 +148,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Rsh16x64 x (Const64 [c]))
  	// cond: uint64(c) < 16
 -	// result: (SRAconst (SLLconst <typ.UInt32> x [16]) [c+16])
-+	// result: (SRAconst (SLLconst <typ.UInt32> x [16]) [uint32(c+16)])
++	// result: (SRAconst (SLLconst <typ.UInt32> x [16]) [int32(c+16)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -161,7 +161,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSRAconst)
 -		v.AuxInt = c + 16
-+		v.AuxInt = int32ToAuxInt(uint32(c + 16))
++		v.AuxInt = int32ToAuxInt(int32(c + 16))
  		v0 := b.NewValue0(v.Pos, OpARMSLLconst, typ.UInt32)
 -		v0.AuxInt = 16
 +		v0.AuxInt = int32ToAuxInt(16)
@@ -173,7 +173,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Rsh32Ux64 x (Const64 [c]))
  	// cond: uint64(c) < 32
 -	// result: (SRLconst x [c])
-+	// result: (SRLconst x [uint32(c)])
++	// result: (SRLconst x [int32(c)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -186,7 +186,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSRLconst)
 -		v.AuxInt = c
-+		v.AuxInt = int32ToAuxInt(uint32(c))
++		v.AuxInt = int32ToAuxInt(int32(c))
  		v.AddArg(x)
  		return true
  	}
@@ -195,7 +195,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Rsh32x64 x (Const64 [c]))
  	// cond: uint64(c) < 32
 -	// result: (SRAconst x [c])
-+	// result: (SRAconst x [uint32(c)])
++	// result: (SRAconst x [int32(c)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -208,7 +208,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSRAconst)
 -		v.AuxInt = c
-+		v.AuxInt = int32ToAuxInt(uint32(c))
++		v.AuxInt = int32ToAuxInt(int32(c))
  		v.AddArg(x)
  		return true
  	}
@@ -217,7 +217,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Rsh8Ux64 x (Const64 [c]))
  	// cond: uint64(c) < 8
 -	// result: (SRLconst (SLLconst <typ.UInt32> x [24]) [c+24])
-+	// result: (SRLconst (SLLconst <typ.UInt32> x [24]) [uint32(c+24)])
++	// result: (SRLconst (SLLconst <typ.UInt32> x [24]) [int32(c+24)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -230,7 +230,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSRLconst)
 -		v.AuxInt = c + 24
-+		v.AuxInt = int32ToAuxInt(uint32(c + 24))
++		v.AuxInt = int32ToAuxInt(int32(c + 24))
  		v0 := b.NewValue0(v.Pos, OpARMSLLconst, typ.UInt32)
 -		v0.AuxInt = 24
 +		v0.AuxInt = int32ToAuxInt(24)
@@ -242,7 +242,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  	// match: (Rsh8x64 x (Const64 [c]))
  	// cond: uint64(c) < 8
 -	// result: (SRAconst (SLLconst <typ.UInt32> x [24]) [c+24])
-+	// result: (SRAconst (SLLconst <typ.UInt32> x [24]) [uint32(c+24)])
++	// result: (SRAconst (SLLconst <typ.UInt32> x [24]) [int32(c+24)])
  	for {
  		x := v_0
  		if v_1.Op != OpConst64 {
@@ -255,7 +255,7 @@ index eaf20e27b7..5d1cf6ee74 100644
  		}
  		v.reset(OpARMSRAconst)
 -		v.AuxInt = c + 24
-+		v.AuxInt = int32ToAuxInt(uint32(c + 24))
++		v.AuxInt = int32ToAuxInt(int32(c + 24))
  		v0 := b.NewValue0(v.Pos, OpARMSLLconst, typ.UInt32)
 -		v0.AuxInt = 24
 +		v0.AuxInt = int32ToAuxInt(24)
