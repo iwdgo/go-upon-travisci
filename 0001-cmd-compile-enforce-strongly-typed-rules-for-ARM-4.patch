@@ -1,21 +1,10 @@
-From 8947f501369825a1742d229a3815fed28aa95f9c Mon Sep 17 00:00:00 2001
+From 4ce480703f05a821365f778bc1ee8d751efb6dc2 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 11:29:40 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
 
 "mul by constant" until "div by constant"
 L547-L609
-
-src/cmd/compile/internal/ssa/rewriteARM.go:6986:8: cannot use c (type int32) as type int64 in argument to isPowerOfTwo
-src/cmd/compile/internal/ssa/rewriteARM.go:6990:33: cannot use c (type int32) as type int64 in argument to log2
-src/cmd/compile/internal/ssa/rewriteARM.go:6990:33: cannot use log2(c) (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:7006:23: cannot use c - 1 (type int32) as type int64 in argument to isPowerOfTwo
-src/cmd/compile/internal/ssa/rewriteARM.go:7010:33: cannot use log2(c - 1) (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:7010:36: cannot use c - 1 (type int32) as type int64 in argument to log2
-src/cmd/compile/internal/ssa/rewriteARM.go:7026:23: cannot use c + 1 (type int32) as type int64 in argument to isPowerOfTwo
-src/cmd/compile/internal/ssa/rewriteARM.go:7030:33: cannot use log2(c + 1) (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:7030:36: cannot use c + 1 (type int32) as type int64 in argument to log2
-src/cmd/compile/internal/ssa/rewriteARM.go:7046:35: cannot use c / 3 (type int32) as type int64 in argument to isPowerOfTwo
 
 Change-Id: I19ebb5694e383878f505d34df2591a51fe38431a
 ---
@@ -24,7 +13,7 @@ Change-Id: I19ebb5694e383878f505d34df2591a51fe38431a
  2 files changed, 191 insertions(+), 191 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..62dd8c5e1d 100644
+index 983f884849..d646d4134e 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,69 +544,69 @@
@@ -51,10 +40,10 @@ index 983f884849..62dd8c5e1d 100644
 +(MUL x (MOVWconst [c])) && isPowerOfTwo32(c) => (SLLconst [int32(log32(c))] x)
 +(MUL x (MOVWconst [c])) && isPowerOfTwo32(c-1) && c >= 3 => (ADDshiftLL x x [int32(log32(c-1))])
 +(MUL x (MOVWconst [c])) && isPowerOfTwo32(c+1) && c >= 7 => (RSBshiftLL x x [int32(log32(c+1))])
-+(MUL x (MOVWconst [c])) && c%3 == 0 && isPowerOfTwo32(c/3) && is32Bit(c) => (SLLconst [int32(log32(c/3))] (ADDshiftLL <x.Type> x x [1]))
-+(MUL x (MOVWconst [c])) && c%5 == 0 && isPowerOfTwo32(c/5) && is32Bit(c) => (SLLconst [int32(log32(c/5))] (ADDshiftLL <x.Type> x x [2]))
-+(MUL x (MOVWconst [c])) && c%7 == 0 && isPowerOfTwo32(c/7) && is32Bit(c) => (SLLconst [int32(log32(c/7))] (RSBshiftLL <x.Type> x x [3]))
-+(MUL x (MOVWconst [c])) && c%9 == 0 && isPowerOfTwo31(c/9) && is32Bit(c) => (SLLconst [int32(log32(c/9))] (ADDshiftLL <x.Type> x x [3]))
++(MUL x (MOVWconst [c])) && c%3 == 0 && isPowerOfTwo32(c/3) => (SLLconst [int32(log32(c/3))] (ADDshiftLL <x.Type> x x [1]))
++(MUL x (MOVWconst [c])) && c%5 == 0 && isPowerOfTwo32(c/5) => (SLLconst [int32(log32(c/5))] (ADDshiftLL <x.Type> x x [2]))
++(MUL x (MOVWconst [c])) && c%7 == 0 && isPowerOfTwo32(c/7) => (SLLconst [int32(log32(c/7))] (RSBshiftLL <x.Type> x x [3]))
++(MUL x (MOVWconst [c])) && c%9 == 0 && isPowerOfTwo32(c/9) => (SLLconst [int32(log32(c/9))] (ADDshiftLL <x.Type> x x [3]))
  
  (MULA x (MOVWconst [c]) a) && int32(c) == -1 -> (SUB a x)
 -(MULA _ (MOVWconst [0]) a) -> a
@@ -155,7 +144,7 @@ index 983f884849..62dd8c5e1d 100644
  // constant comparisons
  (CMPconst (MOVWconst [x]) [y]) => (FlagConstant [subFlags32(x,y)])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..009576786a 100644
+index eaf20e27b7..cc18ded2e9 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -6936,12 +6936,12 @@ func rewriteValueARM_OpARMMUL(v *Value) bool {
@@ -277,7 +266,7 @@ index eaf20e27b7..009576786a 100644
  	// match: (MUL x (MOVWconst [c]))
 -	// cond: c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c)
 -	// result: (SLLconst [log2(c/3)] (ADDshiftLL <x.Type> x x [1]))
-+	// cond: c%3 == 0 && isPowerOfTwo32(c/3) && is32Bit(c)
++	// cond: c%3 == 0 && isPowerOfTwo32(c/3)
 +	// result: (SLLconst [int32(log32(c/3))] (ADDshiftLL <x.Type> x x [1]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
@@ -288,7 +277,7 @@ index eaf20e27b7..009576786a 100644
 -			c := v_1.AuxInt
 -			if !(c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c)) {
 +			c := auxIntToInt32(v_1.AuxInt)
-+			if !(c%3 == 0 && isPowerOfTwo32(c/3) && is32Bit(c)) {
++			if !(c%3 == 0 && isPowerOfTwo32(c/3)) {
  				continue
  			}
  			v.reset(OpARMSLLconst)
@@ -306,7 +295,7 @@ index eaf20e27b7..009576786a 100644
  	// match: (MUL x (MOVWconst [c]))
 -	// cond: c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c)
 -	// result: (SLLconst [log2(c/5)] (ADDshiftLL <x.Type> x x [2]))
-+	// cond: c%5 == 0 && isPowerOfTwo32(c/5) && is32Bit(c)
++	// cond: c%5 == 0 && isPowerOfTwo32(c/5)
 +	// result: (SLLconst [int32(log32(c/5))] (ADDshiftLL <x.Type> x x [2]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
@@ -317,7 +306,7 @@ index eaf20e27b7..009576786a 100644
 -			c := v_1.AuxInt
 -			if !(c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c)) {
 +			c := auxIntToInt32(v_1.AuxInt)
-+			if !(c%5 == 0 && isPowerOfTwo32(c/5) && is32Bit(c)) {
++			if !(c%5 == 0 && isPowerOfTwo32(c/5)) {
  				continue
  			}
  			v.reset(OpARMSLLconst)
@@ -335,7 +324,7 @@ index eaf20e27b7..009576786a 100644
  	// match: (MUL x (MOVWconst [c]))
 -	// cond: c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c)
 -	// result: (SLLconst [log2(c/7)] (RSBshiftLL <x.Type> x x [3]))
-+	// cond: c%7 == 0 && isPowerOfTwo32(c/7) && is32Bit(c)
++	// cond: c%7 == 0 && isPowerOfTwo32(c/7)
 +	// result: (SLLconst [int32(log32(c/7))] (RSBshiftLL <x.Type> x x [3]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
@@ -346,7 +335,7 @@ index eaf20e27b7..009576786a 100644
 -			c := v_1.AuxInt
 -			if !(c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c)) {
 +			c := auxIntToInt32(v_1.AuxInt)
-+			if !(c%7 == 0 && isPowerOfTwo32(c/7) && is32Bit(c)) {
++			if !(c%7 == 0 && isPowerOfTwo32(c/7)) {
  				continue
  			}
  			v.reset(OpARMSLLconst)
@@ -364,7 +353,7 @@ index eaf20e27b7..009576786a 100644
  	// match: (MUL x (MOVWconst [c]))
 -	// cond: c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c)
 -	// result: (SLLconst [log2(c/9)] (ADDshiftLL <x.Type> x x [3]))
-+	// cond: c%9 == 0 && isPowerOfTwo31(c/9) && is32Bit(c)
++	// cond: c%9 == 0 && isPowerOfTwo32(c/9)
 +	// result: (SLLconst [int32(log32(c/9))] (ADDshiftLL <x.Type> x x [3]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
@@ -375,7 +364,7 @@ index eaf20e27b7..009576786a 100644
 -			c := v_1.AuxInt
 -			if !(c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c)) {
 +			c := auxIntToInt32(v_1.AuxInt)
-+			if !(c%9 == 0 && isPowerOfTwo31(c/9) && is32Bit(c)) {
++			if !(c%9 == 0 && isPowerOfTwo32(c/9)) {
  				continue
  			}
  			v.reset(OpARMSLLconst)
