@@ -1,4 +1,4 @@
-From 8a64f93204af6761211653f9917cc8556f06cdda Mon Sep 17 00:00:00 2001
+From 8947f501369825a1742d229a3815fed28aa95f9c Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 11:29:40 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
@@ -24,7 +24,7 @@ Change-Id: I19ebb5694e383878f505d34df2591a51fe38431a
  2 files changed, 191 insertions(+), 191 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..e2c7030b82 100644
+index 983f884849..62dd8c5e1d 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,69 +544,69 @@
@@ -48,13 +48,13 @@ index 983f884849..e2c7030b82 100644
 +(MUL x (MOVWconst [c])) && int32(c) == -1 => (RSBconst [0] x)
 +(MUL _ (MOVWconst [0])) => (MOVWconst [0])
 +(MUL x (MOVWconst [1])) => x
-+(MUL x (MOVWconst [c])) && isPowerOfTwo32(c) => (SLLconst [log32(c)] x)
-+(MUL x (MOVWconst [c])) && isPowerOfTwo32(c-1) && c >= 3 => (ADDshiftLL x x [log32(c-1)])
-+(MUL x (MOVWconst [c])) && isPowerOfTwo32(c+1) && c >= 7 => (RSBshiftLL x x [log32(c+1)])
-+(MUL x (MOVWconst [c])) && c%3 == 0 && isPowerOfTwo32(c/3) && is32Bit(c) => (SLLconst [log32(c/3)] (ADDshiftLL <x.Type> x x [1]))
-+(MUL x (MOVWconst [c])) && c%5 == 0 && isPowerOfTwo32(c/5) && is32Bit(c) => (SLLconst [log32(c/5)] (ADDshiftLL <x.Type> x x [2]))
-+(MUL x (MOVWconst [c])) && c%7 == 0 && isPowerOfTwo32(c/7) && is32Bit(c) => (SLLconst [log32(c/7)] (RSBshiftLL <x.Type> x x [3]))
-+(MUL x (MOVWconst [c])) && c%9 == 0 && isPowerOfTwo31(c/9) && is32Bit(c) => (SLLconst [log32(c/9)] (ADDshiftLL <x.Type> x x [3]))
++(MUL x (MOVWconst [c])) && isPowerOfTwo32(c) => (SLLconst [int32(log32(c))] x)
++(MUL x (MOVWconst [c])) && isPowerOfTwo32(c-1) && c >= 3 => (ADDshiftLL x x [int32(log32(c-1))])
++(MUL x (MOVWconst [c])) && isPowerOfTwo32(c+1) && c >= 7 => (RSBshiftLL x x [int32(log32(c+1))])
++(MUL x (MOVWconst [c])) && c%3 == 0 && isPowerOfTwo32(c/3) && is32Bit(c) => (SLLconst [int32(log32(c/3))] (ADDshiftLL <x.Type> x x [1]))
++(MUL x (MOVWconst [c])) && c%5 == 0 && isPowerOfTwo32(c/5) && is32Bit(c) => (SLLconst [int32(log32(c/5))] (ADDshiftLL <x.Type> x x [2]))
++(MUL x (MOVWconst [c])) && c%7 == 0 && isPowerOfTwo32(c/7) && is32Bit(c) => (SLLconst [int32(log32(c/7))] (RSBshiftLL <x.Type> x x [3]))
++(MUL x (MOVWconst [c])) && c%9 == 0 && isPowerOfTwo31(c/9) && is32Bit(c) => (SLLconst [int32(log32(c/9))] (ADDshiftLL <x.Type> x x [3]))
  
  (MULA x (MOVWconst [c]) a) && int32(c) == -1 -> (SUB a x)
 -(MULA _ (MOVWconst [0]) a) -> a
@@ -155,7 +155,7 @@ index 983f884849..e2c7030b82 100644
  // constant comparisons
  (CMPconst (MOVWconst [x]) [y]) => (FlagConstant [subFlags32(x,y)])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..69e18e6f5b 100644
+index eaf20e27b7..009576786a 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -6936,12 +6936,12 @@ func rewriteValueARM_OpARMMUL(v *Value) bool {
@@ -203,7 +203,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: isPowerOfTwo(c)
 -	// result: (SLLconst [log2(c)] x)
 +	// cond: isPowerOfTwo32(c)
-+	// result: (SLLconst [log32(c)] x)
++	// result: (SLLconst [int32(log32(c))] x)
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -218,7 +218,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMSLLconst)
 -			v.AuxInt = log2(c)
-+			v.AuxInt = int32ToAuxInt(log32(c))
++			v.AuxInt = int32ToAuxInt(int32(log32(c)))
  			v.AddArg(x)
  			return true
  		}
@@ -228,7 +228,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: isPowerOfTwo(c-1) && int32(c) >= 3
 -	// result: (ADDshiftLL x x [log2(c-1)])
 +	// cond: isPowerOfTwo32(c-1) && c >= 3
-+	// result: (ADDshiftLL x x [log32(c-1)])
++	// result: (ADDshiftLL x x [int32(log32(c-1))])
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -243,7 +243,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMADDshiftLL)
 -			v.AuxInt = log2(c - 1)
-+			v.AuxInt = int32ToAuxInt(log32(c - 1))
++			v.AuxInt = int32ToAuxInt(int32(log32(c - 1)))
  			v.AddArg2(x, x)
  			return true
  		}
@@ -253,7 +253,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: isPowerOfTwo(c+1) && int32(c) >= 7
 -	// result: (RSBshiftLL x x [log2(c+1)])
 +	// cond: isPowerOfTwo32(c+1) && c >= 7
-+	// result: (RSBshiftLL x x [log32(c+1)])
++	// result: (RSBshiftLL x x [int32(log32(c+1))])
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -268,7 +268,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMRSBshiftLL)
 -			v.AuxInt = log2(c + 1)
-+			v.AuxInt = int32ToAuxInt(log32(c + 1))
++			v.AuxInt = int32ToAuxInt(int32(log32(c + 1)))
  			v.AddArg2(x, x)
  			return true
  		}
@@ -278,7 +278,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: c%3 == 0 && isPowerOfTwo(c/3) && is32Bit(c)
 -	// result: (SLLconst [log2(c/3)] (ADDshiftLL <x.Type> x x [1]))
 +	// cond: c%3 == 0 && isPowerOfTwo32(c/3) && is32Bit(c)
-+	// result: (SLLconst [log32(c/3)] (ADDshiftLL <x.Type> x x [1]))
++	// result: (SLLconst [int32(log32(c/3))] (ADDshiftLL <x.Type> x x [1]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -293,7 +293,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMSLLconst)
 -			v.AuxInt = log2(c / 3)
-+			v.AuxInt = int32ToAuxInt(log32(c / 3))
++			v.AuxInt = int32ToAuxInt(int32(log32(c / 3)))
  			v0 := b.NewValue0(v.Pos, OpARMADDshiftLL, x.Type)
 -			v0.AuxInt = 1
 +			v0.AuxInt = int32ToAuxInt(1)
@@ -307,7 +307,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: c%5 == 0 && isPowerOfTwo(c/5) && is32Bit(c)
 -	// result: (SLLconst [log2(c/5)] (ADDshiftLL <x.Type> x x [2]))
 +	// cond: c%5 == 0 && isPowerOfTwo32(c/5) && is32Bit(c)
-+	// result: (SLLconst [log32(c/5)] (ADDshiftLL <x.Type> x x [2]))
++	// result: (SLLconst [int32(log32(c/5))] (ADDshiftLL <x.Type> x x [2]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -322,7 +322,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMSLLconst)
 -			v.AuxInt = log2(c / 5)
-+			v.AuxInt = int32ToAuxInt(log32(c / 5))
++			v.AuxInt = int32ToAuxInt(int32(log32(c / 5)))
  			v0 := b.NewValue0(v.Pos, OpARMADDshiftLL, x.Type)
 -			v0.AuxInt = 2
 +			v0.AuxInt = int32ToAuxInt(2)
@@ -336,7 +336,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: c%7 == 0 && isPowerOfTwo(c/7) && is32Bit(c)
 -	// result: (SLLconst [log2(c/7)] (RSBshiftLL <x.Type> x x [3]))
 +	// cond: c%7 == 0 && isPowerOfTwo32(c/7) && is32Bit(c)
-+	// result: (SLLconst [log32(c/7)] (RSBshiftLL <x.Type> x x [3]))
++	// result: (SLLconst [int32(log32(c/7))] (RSBshiftLL <x.Type> x x [3]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -351,7 +351,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMSLLconst)
 -			v.AuxInt = log2(c / 7)
-+			v.AuxInt = int32ToAuxInt(log32(c / 7))
++			v.AuxInt = int32ToAuxInt(int32(log32(c / 7)))
  			v0 := b.NewValue0(v.Pos, OpARMRSBshiftLL, x.Type)
 -			v0.AuxInt = 3
 +			v0.AuxInt = int32ToAuxInt(3)
@@ -365,7 +365,7 @@ index eaf20e27b7..69e18e6f5b 100644
 -	// cond: c%9 == 0 && isPowerOfTwo(c/9) && is32Bit(c)
 -	// result: (SLLconst [log2(c/9)] (ADDshiftLL <x.Type> x x [3]))
 +	// cond: c%9 == 0 && isPowerOfTwo31(c/9) && is32Bit(c)
-+	// result: (SLLconst [log32(c/9)] (ADDshiftLL <x.Type> x x [3]))
++	// result: (SLLconst [int32(log32(c/9))] (ADDshiftLL <x.Type> x x [3]))
  	for {
  		for _i0 := 0; _i0 <= 1; _i0, v_0, v_1 = _i0+1, v_1, v_0 {
  			x := v_0
@@ -380,7 +380,7 @@ index eaf20e27b7..69e18e6f5b 100644
  			}
  			v.reset(OpARMSLLconst)
 -			v.AuxInt = log2(c / 9)
-+			v.AuxInt = int32ToAuxInt(log32(c / 9))
++			v.AuxInt = int32ToAuxInt(int32(log32(c / 9)))
  			v0 := b.NewValue0(v.Pos, OpARMADDshiftLL, x.Type)
 -			v0.AuxInt = 3
 +			v0.AuxInt = int32ToAuxInt(3)
