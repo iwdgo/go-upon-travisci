@@ -1,4 +1,4 @@
-From be55c07401986503670cc37793bcaac4d010f71f Mon Sep 17 00:00:00 2001
+From 86e79e076e3dabdd6a39406e902b0d45c0341ccd Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 11:29:40 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
@@ -8,15 +8,15 @@ L547-L609
 
 Change-Id: I19ebb5694e383878f505d34df2591a51fe38431a
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 112 +++---
- src/cmd/compile/internal/ssa/rewriteARM.go | 440 ++++++++++-----------
- 2 files changed, 276 insertions(+), 276 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 118 +++---
+ src/cmd/compile/internal/ssa/rewriteARM.go | 464 ++++++++++-----------
+ 2 files changed, 291 insertions(+), 291 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..f425c9821e 100644
+index 983f884849..8e1ddb7d44 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -544,70 +544,70 @@
+@@ -544,69 +544,69 @@
  
  // if a register move has only 1 use, just use the same register without emitting instruction
  // MOVWnop doesn't emit instruction, only for ensuring the type.
@@ -134,17 +134,19 @@ index 983f884849..f425c9821e 100644
 +(MULS (MOVWconst [c]) x a) && c%9 == 0 && isPowerOfTwo32(c/9) => (RSB (SLLconst <x.Type> [int32(log32(c/9))] (ADDshiftLL <x.Type> x x [3])) a)
  
  // div by constant
- (Select0 (CALLudiv x (MOVWconst [1]))) -> x
- (Select1 (CALLudiv _ (MOVWconst [1]))) -> (MOVWconst [0])
- (Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (SRLconst [log2(c)] x)
- (Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (ANDconst [c-1] x)
--
-+// END OF (4)
+-(Select0 (CALLudiv x (MOVWconst [1]))) -> x
+-(Select1 (CALLudiv _ (MOVWconst [1]))) -> (MOVWconst [0])
+-(Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (SRLconst [log2(c)] x)
+-(Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo(c) -> (ANDconst [c-1] x)
++(Select0 (CALLudiv x (MOVWconst [1]))) => x
++(Select1 (CALLudiv _ (MOVWconst [1]))) => (MOVWconst [0])
++(Select0 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo32(c) => (SRLconst [int32(log32(c))] x)
++(Select1 (CALLudiv x (MOVWconst [c]))) && isPowerOfTwo32(c) => (ANDconst [c-1] x)
+ 
  // constant comparisons
  (CMPconst (MOVWconst [x]) [y]) => (FlagConstant [subFlags32(x,y)])
- (CMNconst (MOVWconst [x]) [y]) => (FlagConstant [addFlags32(x,y)])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..832c39e5ff 100644
+index eaf20e27b7..d0f66ef72c 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -6936,12 +6936,12 @@ func rewriteValueARM_OpARMMUL(v *Value) bool {
@@ -1294,6 +1296,76 @@ index eaf20e27b7..832c39e5ff 100644
  		v1.AddArg2(x, x)
  		v0.AddArg(v1)
  		v.AddArg2(v0, a)
+@@ -15531,15 +15531,15 @@ func rewriteValueARM_OpSelect0(v *Value) bool {
+ 		_ = v_0.Args[1]
+ 		x := v_0.Args[0]
+ 		v_0_1 := v_0.Args[1]
+-		if v_0_1.Op != OpARMMOVWconst || v_0_1.AuxInt != 1 {
++		if v_0_1.Op != OpARMMOVWconst || auxIntToInt32(v_0_1.AuxInt) != 1 {
+ 			break
+ 		}
+ 		v.copyOf(x)
+ 		return true
+ 	}
+ 	// match: (Select0 (CALLudiv x (MOVWconst [c])))
+-	// cond: isPowerOfTwo(c)
+-	// result: (SRLconst [log2(c)] x)
++	// cond: isPowerOfTwo32(c)
++	// result: (SRLconst [int32(log32(c))] x)
+ 	for {
+ 		if v_0.Op != OpARMCALLudiv {
+ 			break
+@@ -15550,12 +15550,12 @@ func rewriteValueARM_OpSelect0(v *Value) bool {
+ 		if v_0_1.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0_1.AuxInt
+-		if !(isPowerOfTwo(c)) {
++		c := auxIntToInt32(v_0_1.AuxInt)
++		if !(isPowerOfTwo32(c)) {
+ 			break
+ 		}
+ 		v.reset(OpARMSRLconst)
+-		v.AuxInt = log2(c)
++		v.AuxInt = int32ToAuxInt(int32(log32(c)))
+ 		v.AddArg(x)
+ 		return true
+ 	}
+@@ -15592,15 +15592,15 @@ func rewriteValueARM_OpSelect1(v *Value) bool {
+ 		}
+ 		_ = v_0.Args[1]
+ 		v_0_1 := v_0.Args[1]
+-		if v_0_1.Op != OpARMMOVWconst || v_0_1.AuxInt != 1 {
++		if v_0_1.Op != OpARMMOVWconst || auxIntToInt32(v_0_1.AuxInt) != 1 {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = 0
++		v.AuxInt = int32ToAuxInt(0)
+ 		return true
+ 	}
+ 	// match: (Select1 (CALLudiv x (MOVWconst [c])))
+-	// cond: isPowerOfTwo(c)
++	// cond: isPowerOfTwo32(c)
+ 	// result: (ANDconst [c-1] x)
+ 	for {
+ 		if v_0.Op != OpARMCALLudiv {
+@@ -15612,12 +15612,12 @@ func rewriteValueARM_OpSelect1(v *Value) bool {
+ 		if v_0_1.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0_1.AuxInt
+-		if !(isPowerOfTwo(c)) {
++		c := auxIntToInt32(v_0_1.AuxInt)
++		if !(isPowerOfTwo32(c)) {
+ 			break
+ 		}
+ 		v.reset(OpARMANDconst)
+-		v.AuxInt = c - 1
++		v.AuxInt = int32ToAuxInt(c - 1)
+ 		v.AddArg(x)
+ 		return true
+ 	}
 -- 
 2.22.0.windows.1
 
