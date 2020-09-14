@@ -1,4 +1,4 @@
-From 3f93b148f2a63849d0e6e7ba29ce3f724b2de011 Mon Sep 17 00:00:00 2001
+From dec09ef19c4757caf601afd1dd00aa22d13f7ff6 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 11:29:40 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (4)
@@ -9,11 +9,11 @@ L547-L609
 Change-Id: I19ebb5694e383878f505d34df2591a51fe38431a
 ---
  src/cmd/compile/internal/ssa/gen/ARM.rules |  46 +++---
- src/cmd/compile/internal/ssa/rewriteARM.go | 174 ++++++++++-----------
- 2 files changed, 110 insertions(+), 110 deletions(-)
+ src/cmd/compile/internal/ssa/rewriteARM.go | 176 ++++++++++-----------
+ 2 files changed, 111 insertions(+), 111 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..c9fbb78b71 100644
+index 983f884849..2727629977 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -544,30 +544,30 @@
@@ -59,7 +59,7 @@ index 983f884849..c9fbb78b71 100644
 +(MULA x (MOVWconst [c]) a) && c == -1 => (SUB a x)
 +(MULA _ (MOVWconst [0]) a) => a
 +(MULA x (MOVWconst [1]) a) => (ADD x a)
-+(MULA x (MOVWconst [c]) a) && isPowerOfTwo32(c) => (ADD (SLLconst <x.Type> [log2(c)] x) a)
++(MULA x (MOVWconst [c]) a) && isPowerOfTwo32(c) => (ADD (SLLconst <x.Type> [int32(log32(c))] x) a)
 +(MULA x (MOVWconst [c]) a) && isPowerOfTwo32(c-1) && c >= 3 => (ADD (ADDshiftLL <x.Type> x x [int32(log32(c-1))]) a)
 +(MULA x (MOVWconst [c]) a) && isPowerOfTwo32(c+1) && c >= 7 => (ADD (RSBshiftLL <x.Type> x x [int32(log32(c+1))]) a)
 +(MULA x (MOVWconst [c]) a) && c%3 == 0 && isPowerOfTwo32(c/3) => (ADD (SLLconst <x.Type> [int32(log32(c/3))] (ADDshiftLL <x.Type> x x [1])) a)
@@ -79,7 +79,7 @@ index 983f884849..c9fbb78b71 100644
  (CMPconst (MOVWconst [x]) [y]) => (FlagConstant [subFlags32(x,y)])
  (CMNconst (MOVWconst [x]) [y]) => (FlagConstant [addFlags32(x,y)])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..00cdf61328 100644
+index eaf20e27b7..014d0dcbfd 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -6936,12 +6936,12 @@ func rewriteValueARM_OpARMMUL(v *Value) bool {
@@ -354,8 +354,9 @@ index eaf20e27b7..00cdf61328 100644
  	}
  	// match: (MULA x (MOVWconst [c]) a)
 -	// cond: isPowerOfTwo(c)
+-	// result: (ADD (SLLconst <x.Type> [log2(c)] x) a)
 +	// cond: isPowerOfTwo32(c)
- 	// result: (ADD (SLLconst <x.Type> [log2(c)] x) a)
++	// result: (ADD (SLLconst <x.Type> [int32(log32(c))] x) a)
  	for {
  		x := v_0
  		if v_1.Op != OpARMMOVWconst {
@@ -371,7 +372,7 @@ index eaf20e27b7..00cdf61328 100644
  		v.reset(OpARMADD)
  		v0 := b.NewValue0(v.Pos, OpARMSLLconst, x.Type)
 -		v0.AuxInt = log2(c)
-+		v0.AuxInt = int32ToAuxInt(log2(c))
++		v0.AuxInt = int32ToAuxInt(int32(log32(c)))
  		v0.AddArg(x)
  		v.AddArg2(v0, a)
  		return true
