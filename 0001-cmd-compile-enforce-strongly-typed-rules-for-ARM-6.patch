@@ -1,4 +1,4 @@
-From 1bbf6d8ab1dadb0a1a6d3b8ef08353ddf381e05d Mon Sep 17 00:00:00 2001
+From da0025055b981c6c72de98b6df25fd0143823583 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Fri, 15 May 2020 20:35:00 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (6)
@@ -9,12 +9,12 @@ Toolstash-check is successful.
 
 Change-Id: I55846a459aca5238f831750f04132e13a0baeed7
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules |  704 +++++-----
- src/cmd/compile/internal/ssa/rewriteARM.go | 1386 ++++++++++----------
- 2 files changed, 1045 insertions(+), 1045 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules |  712 +++++-----
+ src/cmd/compile/internal/ssa/rewriteARM.go | 1404 ++++++++++----------
+ 2 files changed, 1058 insertions(+), 1058 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..f45ca4edb0 100644
+index 983f884849..15fae6957d 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -1067,73 +1067,73 @@
@@ -293,7 +293,7 @@ index 983f884849..f45ca4edb0 100644
  
  // the result will overwrite the addend, since they are in the same register
  (ADDF a (MULF x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULAF a x y)
-@@ -1229,246 +1229,246 @@
+@@ -1229,247 +1229,247 @@
  (SUBD a (MULD x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULSD a x y)
  (SUBD a (NMULD x y)) && a.Uses == 1 && objabi.GOARM >= 6 -> (MULAD a x y)
  
@@ -561,6 +561,10 @@ index 983f884849..f45ca4edb0 100644
 -(GE (CMPconst [0] l:(XORshiftLLreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftLLreg x y z) yes no)
 -(GE (CMPconst [0] l:(XORshiftRLreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftRLreg x y z) yes no)
 -(GE (CMPconst [0] l:(XORshiftRAreg x y z)) yes no) && l.Uses==1 -> (GE (TEQshiftRAreg x y z) yes no)
+-
+-(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
+-(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
+-(MOVWload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
 +(CMP x (RSBconst [0] y)) => (CMN x y)
 +(CMN x (RSBconst [0] y)) => (CMP x y)
 +(EQ (CMPconst [0] l:(SUB x y)) yes no) && l.Uses==1 => (EQ (CMP x y) yes no)
@@ -767,11 +771,12 @@ index 983f884849..f45ca4edb0 100644
 +(GE (CMPconst [0] l:(XORshiftLLreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftLLreg x y z) yes no)
 +(GE (CMPconst [0] l:(XORshiftRLreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftRLreg x y z) yes no)
 +(GE (CMPconst [0] l:(XORshiftRAreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftRAreg x y z) yes no)
- 
- (MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
- (MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
++
++(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int64(read8(sym, off))])
++(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
++(MOVWload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..a7c1ed8fc5 100644
+index eaf20e27b7..2ee99136e2 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -1128,10 +1128,10 @@ func rewriteValueARM_OpARMADCshiftLLreg(v *Value) bool {
@@ -1305,6 +1310,23 @@ index eaf20e27b7..a7c1ed8fc5 100644
  		if v_0.Op != OpARMADD {
  			break
  		}
+@@ -4629,13 +4629,13 @@ func rewriteValueARM_OpARMMOVBUload(v *Value) bool {
+ 	// cond: symIsRO(sym)
+ 	// result: (MOVWconst [int64(read8(sym, off))])
+ 	for {
+-		off := v.AuxInt
+-		sym := v.Aux
++		off := auxIntToInt32(v.AuxInt)
++		sym := auxToSym(v.Aux)
+ 		if v_0.Op != OpSB || !(symIsRO(sym)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(read8(sym, off))
++		v.AuxInt = int32ToAuxInt(int64(read8(sym, off)))
+ 		return true
+ 	}
+ 	return false
 @@ -4669,10 +4669,10 @@ func rewriteValueARM_OpARMMOVBUloadidx(v *Value) bool {
  		if v_1.Op != OpARMMOVWconst {
  			break
@@ -1427,6 +1449,23 @@ index eaf20e27b7..a7c1ed8fc5 100644
  		if v_0.Op != OpARMADD {
  			break
  		}
+@@ -5542,13 +5542,13 @@ func rewriteValueARM_OpARMMOVHUload(v *Value) bool {
+ 	// cond: symIsRO(sym)
+ 	// result: (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
+ 	for {
+-		off := v.AuxInt
+-		sym := v.Aux
++		off := auxIntToInt32(v.AuxInt)
++		sym := auxToSym(v.Aux)
+ 		if v_0.Op != OpSB || !(symIsRO(sym)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(read16(sym, off, config.ctxt.Arch.ByteOrder))
++		v.AuxInt = int32ToAuxInt(int64(read16(sym, off, config.ctxt.Arch.ByteOrder)))
+ 		return true
+ 	}
+ 	return false
 @@ -5582,10 +5582,10 @@ func rewriteValueARM_OpARMMOVHUloadidx(v *Value) bool {
  		if v_1.Op != OpARMMOVWconst {
  			break
@@ -1630,6 +1669,23 @@ index eaf20e27b7..a7c1ed8fc5 100644
  		v.AddArg3(ptr, idx, mem)
  		return true
  	}
+@@ -6263,13 +6263,13 @@ func rewriteValueARM_OpARMMOVWload(v *Value) bool {
+ 	// cond: symIsRO(sym)
+ 	// result: (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
+ 	for {
+-		off := v.AuxInt
+-		sym := v.Aux
++		off := auxIntToInt32(v.AuxInt)
++		sym := auxToSym(v.Aux)
+ 		if v_0.Op != OpSB || !(symIsRO(sym)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))
++		v.AuxInt = int32ToAuxInt(int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder))))
+ 		return true
+ 	}
+ 	return false
 @@ -6302,10 +6302,10 @@ func rewriteValueARM_OpARMMOVWloadidx(v *Value) bool {
  		if v_1.Op != OpARMMOVWconst {
  			break
