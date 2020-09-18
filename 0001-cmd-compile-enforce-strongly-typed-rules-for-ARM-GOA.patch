@@ -1,4 +1,4 @@
-From 0494014532ce1c4882529c6b9ed7e8c553d8f920 Mon Sep 17 00:00:00 2001
+From de36592921e6f668bfc275d0409e972c8e9106c4 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 29 Aug 2020 11:10:50 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (GOARM)
@@ -12,12 +12,12 @@ src/cmd/compile/internal/ssa/rewriteARM.go:11290:33: cannot use int64(int32(-c))
 
 Change-Id: I254f80d17839ef4957c1b7afbdb4db363a3b9367
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 58 ++++++++---------
- src/cmd/compile/internal/ssa/rewriteARM.go | 74 +++++++++++-----------
- 2 files changed, 66 insertions(+), 66 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 58 +++++++--------
+ src/cmd/compile/internal/ssa/rewriteARM.go | 82 +++++++++++-----------
+ 2 files changed, 70 insertions(+), 70 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..a9650fa563 100644
+index 983f884849..f27dfe5fec 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -65,17 +65,17 @@
@@ -68,10 +68,10 @@ index 983f884849..a9650fa563 100644
 -(SUBconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff -> (ANDconst [int64(int32(-c))] x)
 -(ANDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff -> (BICconst [int64(int32(^uint32(c)))] x)
 -(BICconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff -> (ANDconst [int64(int32(^uint32(c)))] x)
-+(ADDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff => (SUBconst [int64(int32(-c))] x)
-+(SUBconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff => (ANDconst [int64(int32(-c))] x)
-+(ANDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff => (BICconst [int64(int32(^uint32(c)))] x)
-+(BICconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff => (ANDconst [int64(int32(^uint32(c)))] x)
++(ADDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff => (SUBconst [int32(-c)] x)
++(SUBconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff => (ANDconst [int32(-c)] x)
++(ANDconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff => (BICconst [int32(^uint32(c))] x)
++(BICconst [c] x) && objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff => (ANDconst [int32(^uint32(c))] x)
  (ADDconst [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(c+d))])
  (ADDconst [c] (ADDconst [d] x)) -> (ADDconst [int64(int32(c+d))] x)
  (ADDconst [c] (SUBconst [d] x)) -> (ADDconst [int64(int32(c-d))] x)
@@ -136,12 +136,15 @@ index 983f884849..a9650fa563 100644
  // comparison simplification
  (CMP x (RSBconst [0] y)) -> (CMN x y)
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..4fb31e1617 100644
+index eaf20e27b7..d80473c702 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
-@@ -1951,13 +1951,13 @@ func rewriteValueARM_OpARMADDconst(v *Value) bool {
+@@ -1949,15 +1949,15 @@ func rewriteValueARM_OpARMADDconst(v *Value) bool {
+ 	}
+ 	// match: (ADDconst [c] x)
  	// cond: objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff
- 	// result: (SUBconst [int64(int32(-c))] x)
+-	// result: (SUBconst [int64(int32(-c))] x)
++	// result: (SUBconst [int32(-c)] x)
  	for {
 -		c := v.AuxInt
 +		c := auxIntToInt32(v.AuxInt)
@@ -151,7 +154,7 @@ index eaf20e27b7..4fb31e1617 100644
  		}
  		v.reset(OpARMSUBconst)
 -		v.AuxInt = int64(int32(-c))
-+		v.AuxInt = int32ToAuxInt(int64(int32(-c)))
++		v.AuxInt = int32ToAuxInt(int32(-c))
  		v.AddArg(x)
  		return true
  	}
@@ -169,9 +172,12 @@ index eaf20e27b7..4fb31e1617 100644
  			break
  		}
  		x := v_0_0.Args[0]
-@@ -2543,13 +2543,13 @@ func rewriteValueARM_OpARMANDconst(v *Value) bool {
+@@ -2541,15 +2541,15 @@ func rewriteValueARM_OpARMANDconst(v *Value) bool {
+ 	}
+ 	// match: (ANDconst [c] x)
  	// cond: objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff
- 	// result: (BICconst [int64(int32(^uint32(c)))] x)
+-	// result: (BICconst [int64(int32(^uint32(c)))] x)
++	// result: (BICconst [int32(^uint32(c))] x)
  	for {
 -		c := v.AuxInt
 +		c := auxIntToInt32(v.AuxInt)
@@ -181,13 +187,16 @@ index eaf20e27b7..4fb31e1617 100644
  		}
  		v.reset(OpARMBICconst)
 -		v.AuxInt = int64(int32(^uint32(c)))
-+		v.AuxInt = int32ToAuxInt(int64(int32(^uint32(c))))
++		v.AuxInt = int32ToAuxInt(int32(^uint32(c)))
  		v.AddArg(x)
  		return true
  	}
-@@ -3038,13 +3038,13 @@ func rewriteValueARM_OpARMBICconst(v *Value) bool {
+@@ -3036,15 +3036,15 @@ func rewriteValueARM_OpARMBICconst(v *Value) bool {
+ 	}
+ 	// match: (BICconst [c] x)
  	// cond: objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && ^uint32(c)<=0xffff
- 	// result: (ANDconst [int64(int32(^uint32(c)))] x)
+-	// result: (ANDconst [int64(int32(^uint32(c)))] x)
++	// result: (ANDconst [int32(^uint32(c))] x)
  	for {
 -		c := v.AuxInt
 +		c := auxIntToInt32(v.AuxInt)
@@ -197,7 +206,7 @@ index eaf20e27b7..4fb31e1617 100644
  		}
  		v.reset(OpARMANDconst)
 -		v.AuxInt = int64(int32(^uint32(c)))
-+		v.AuxInt = int32ToAuxInt(int64(int32(^uint32(c))))
++		v.AuxInt = int32ToAuxInt(int32(^uint32(c)))
  		v.AddArg(x)
  		return true
  	}
@@ -257,9 +266,12 @@ index eaf20e27b7..4fb31e1617 100644
  		v.AddArg(x)
  		return true
  	}
-@@ -11281,13 +11281,13 @@ func rewriteValueARM_OpARMSUBconst(v *Value) bool {
+@@ -11279,15 +11279,15 @@ func rewriteValueARM_OpARMSUBconst(v *Value) bool {
+ 	}
+ 	// match: (SUBconst [c] x)
  	// cond: objabi.GOARM==7 && !isARMImmRot(uint32(c)) && uint32(c)>0xffff && uint32(-c)<=0xffff
- 	// result: (ANDconst [int64(int32(-c))] x)
+-	// result: (ANDconst [int64(int32(-c))] x)
++	// result: (ANDconst [int32(-c)] x)
  	for {
 -		c := v.AuxInt
 +		c := auxIntToInt32(v.AuxInt)
@@ -269,7 +281,7 @@ index eaf20e27b7..4fb31e1617 100644
  		}
  		v.reset(OpARMANDconst)
 -		v.AuxInt = int64(int32(-c))
-+		v.AuxInt = int32ToAuxInt(int64(int32(-c)))
++		v.AuxInt = int32ToAuxInt(int32(-c))
  		v.AddArg(x)
  		return true
  	}
