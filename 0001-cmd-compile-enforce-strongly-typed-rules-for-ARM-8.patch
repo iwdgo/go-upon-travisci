@@ -1,26 +1,21 @@
-From 3dabb3a6c53ac2a2ec52e6d1d3be725d82e4c17e Mon Sep 17 00:00:00 2001
+From 86f072175a87452efa2e03526d7a666395872b97 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 4 Jul 2020 11:01:29 +0200
-Subject: [PATCH] L148-L156: to merge in stronglytyped-2
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (8)
 
-src/cmd/compile/internal/ssa/rewriteARM.go:13944:27: cannot use c (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:14041:27: cannot use c (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:14138:27: cannot use c (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:14965:30: cannot use c + 16 (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:15068:30: cannot use c + 16 (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:15175:27: cannot use c (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:15266:27: cannot use c (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:15372:30: cannot use c + 24 (type int64) as type int32 in argument to int32ToAuxInt
-src/cmd/compile/internal/ssa/rewriteARM.go:15475:30: cannot use c + 24 (type int64) as type int32 in argument to int32ToAuxInt
+L148-L156: add type casting to int32
+L774-L778: ...
+
+Toolstash-check successful
 
 Change-Id: Ib6544c1d7853c2811def5b18786e1fc5c18086ca
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 18 +++----
- src/cmd/compile/internal/ssa/rewriteARM.go | 62 +++++++++++-----------
- 2 files changed, 40 insertions(+), 40 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 28 +++----
+ src/cmd/compile/internal/ssa/rewriteARM.go | 90 +++++++++++-----------
+ 2 files changed, 59 insertions(+), 59 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..d69e112035 100644
+index 983f884849..ddfa70e579 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -145,15 +145,15 @@
@@ -48,10 +43,111 @@ index 983f884849..d69e112035 100644
  
  // large constant shifts
  (Lsh32x64 _ (Const64 [c])) && uint64(c) >= 32 -> (Const32 [0])
+@@ -771,11 +771,11 @@
+ (BICconst [c] (MOVWconst [d])) -> (MOVWconst [d&^c])
+ (BICconst [c] (BICconst [d] x)) -> (BICconst [int64(int32(c|d))] x)
+ (MVN (MOVWconst [c])) -> (MOVWconst [^c])
+-(MOVBreg (MOVWconst [c])) -> (MOVWconst [int64(int8(c))])
+-(MOVBUreg (MOVWconst [c])) -> (MOVWconst [int64(uint8(c))])
+-(MOVHreg (MOVWconst [c])) -> (MOVWconst [int64(int16(c))])
+-(MOVHUreg (MOVWconst [c])) -> (MOVWconst [int64(uint16(c))])
+-(MOVWreg (MOVWconst [c])) -> (MOVWconst [c])
++(MOVBreg (MOVWconst [c])) => (MOVWconst [int8(c)])
++(MOVBUreg (MOVWconst [c])) => (MOVWconst [uint8(c)])
++(MOVHreg (MOVWconst [c])) => (MOVWconst [int16(c)])
++(MOVHUreg (MOVWconst [c])) => (MOVWconst [uint16(c)])
++(MOVWreg (MOVWconst [c])) => (MOVWconst [c])
+ // BFX: Width = c >> 8, LSB = c & 0xff, result = d << (32 - Width - LSB) >> (32 - Width)
+ (BFX [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8)))])
+ (BFXU [c] (MOVWconst [d])) -> (MOVWconst [int64(int32(uint32(d)<<(32-uint32(c&0xff)-uint32(c>>8))>>(32-uint32(c>>8))))])
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..b07bc2c428 100644
+index eaf20e27b7..f731e0fcb2 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
+@@ -4730,14 +4730,14 @@ func rewriteValueARM_OpARMMOVBUreg(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (MOVBUreg (MOVWconst [c]))
+-	// result: (MOVWconst [int64(uint8(c))])
++	// result: (MOVWconst [uint8(c)])
+ 	for {
+ 		if v_0.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0.AuxInt
++		c := auxIntToInt32(v_0.AuxInt)
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(uint8(c))
++		v.AuxInt = int32ToAuxInt(uint8(c))
+ 		return true
+ 	}
+ 	return false
+@@ -4939,14 +4939,14 @@ func rewriteValueARM_OpARMMOVBreg(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (MOVBreg (MOVWconst [c]))
+-	// result: (MOVWconst [int64(int8(c))])
++	// result: (MOVWconst [int8(c)])
+ 	for {
+ 		if v_0.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0.AuxInt
++		c := auxIntToInt32(v_0.AuxInt)
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(int8(c))
++		v.AuxInt = int32ToAuxInt(int8(c))
+ 		return true
+ 	}
+ 	return false
+@@ -5665,14 +5665,14 @@ func rewriteValueARM_OpARMMOVHUreg(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (MOVHUreg (MOVWconst [c]))
+-	// result: (MOVWconst [int64(uint16(c))])
++	// result: (MOVWconst [uint16(c)])
+ 	for {
+ 		if v_0.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0.AuxInt
++		c := auxIntToInt32(v_0.AuxInt)
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(uint16(c))
++		v.AuxInt = int32ToAuxInt(uint16(c))
+ 		return true
+ 	}
+ 	return false
+@@ -5918,14 +5918,14 @@ func rewriteValueARM_OpARMMOVHreg(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (MOVHreg (MOVWconst [c]))
+-	// result: (MOVWconst [int64(int16(c))])
++	// result: (MOVWconst [int16(c)])
+ 	for {
+ 		if v_0.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0.AuxInt
++		c := auxIntToInt32(v_0.AuxInt)
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(int16(c))
++		v.AuxInt = int32ToAuxInt(int16(c))
+ 		return true
+ 	}
+ 	return false
+@@ -6555,9 +6555,9 @@ func rewriteValueARM_OpARMMOVWreg(v *Value) bool {
+ 		if v_0.Op != OpARMMOVWconst {
+ 			break
+ 		}
+-		c := v_0.AuxInt
++		c := auxIntToInt32(v_0.AuxInt)
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = c
++		v.AuxInt = int32ToAuxInt(c)
+ 		return true
+ 	}
+ 	return false
 @@ -13930,18 +13930,18 @@ func rewriteValueARM_OpLsh16x64(v *Value) bool {
  	v_0 := v.Args[0]
  	// match: (Lsh16x64 x (Const64 [c]))
