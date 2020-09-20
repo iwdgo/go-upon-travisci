@@ -1,25 +1,25 @@
-From 7ce83cb69b210d3d7a5986dac1166e89bb20c90b Mon Sep 17 00:00:00 2001
+From 511ac52990f11461d9558def335a410d2fd4819c Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 20 Sep 2020 11:57:20 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (mem)
 
-L263-L345
-(L435-L459)
+L274-L281, L293-L307, L312, L317, L319, L335, L341
+x L435-L459
 (L1193-L1196, L1197-L1199)
 
 Toolstash-check successful
 
 Change-Id: I69e8e9f964c1f35615e4e19401c3f661e1e64a3a
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules |  50 ++---
- src/cmd/compile/internal/ssa/rewriteARM.go | 208 ++++++++++-----------
- 2 files changed, 129 insertions(+), 129 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules |  40 ++---
+ src/cmd/compile/internal/ssa/rewriteARM.go | 170 ++++++++++-----------
+ 2 files changed, 105 insertions(+), 105 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..c293c15fb5 100644
+index 983f884849..53bdf2f38e 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
-@@ -260,32 +260,32 @@
+@@ -260,23 +260,23 @@
  (Load <t> ptr mem) && is64BitFloat(t) -> (MOVDload ptr mem)
  
  // stores
@@ -51,19 +51,8 @@ index 983f884849..c293c15fb5 100644
 +(Zero [4] {t} ptr mem) && t.Alignment()%2 == 0 =>
  	(MOVHstore [2] ptr (MOVWconst [0])
  		(MOVHstore [0] ptr (MOVWconst [0]) mem))
--(Zero [4] ptr mem) ->
-+(Zero [4] ptr mem) =>
- 	(MOVBstore [3] ptr (MOVWconst [0])
- 		(MOVBstore [2] ptr (MOVWconst [0])
- 			(MOVBstore [1] ptr (MOVWconst [0])
- 				(MOVBstore [0] ptr (MOVWconst [0]) mem))))
- 
--(Zero [3] ptr mem) ->
-+(Zero [3] ptr mem) =>
- 	(MOVBstore [2] ptr (MOVWconst [0])
- 		(MOVBstore [1] ptr (MOVWconst [0])
- 			(MOVBstore [0] ptr (MOVWconst [0]) mem)))
-@@ -294,38 +294,38 @@
+ (Zero [4] ptr mem) ->
+@@ -294,29 +294,29 @@
  // 4 and 128 are magic constants, see runtime/mkduff.go
  (Zero [s] {t} ptr mem)
  	&& s%4 == 0 && s > 4 && s <= 512
@@ -83,11 +72,9 @@ index 983f884849..c293c15fb5 100644
  		mem)
  
  // moves
--(Move [0] _ _ mem) -> mem
--(Move [1] dst src mem) -> (MOVBstore dst (MOVBUload src mem) mem)
+ (Move [0] _ _ mem) -> mem
+ (Move [1] dst src mem) -> (MOVBstore dst (MOVBUload src mem) mem)
 -(Move [2] {t} dst src mem) && t.(*types.Type).Alignment()%2 == 0 ->
-+(Move [0] _ _ mem) => mem
-+(Move [1] dst src mem) => (MOVBstore dst (MOVBUload src mem) mem)
 +(Move [2] {t} dst src mem) && t.Alignment()%2 == 0 =>
  	(MOVHstore dst (MOVHUload src mem) mem)
 -(Move [2] dst src mem) ->
@@ -101,18 +88,7 @@ index 983f884849..c293c15fb5 100644
 +(Move [4] {t} dst src mem) && t.Alignment()%2 == 0 =>
  	(MOVHstore [2] dst (MOVHUload [2] src mem)
  		(MOVHstore dst (MOVHUload src mem) mem))
--(Move [4] dst src mem) ->
-+(Move [4] dst src mem) =>
- 	(MOVBstore [3] dst (MOVBUload [3] src mem)
- 		(MOVBstore [2] dst (MOVBUload [2] src mem)
- 			(MOVBstore [1] dst (MOVBUload [1] src mem)
- 				(MOVBstore dst (MOVBUload src mem) mem))))
- 
--(Move [3] dst src mem) ->
-+(Move [3] dst src mem) =>
- 	(MOVBstore [2] dst (MOVBUload [2] src mem)
- 		(MOVBstore [1] dst (MOVBUload [1] src mem)
- 			(MOVBstore dst (MOVBUload src mem) mem)))
+ (Move [4] dst src mem) ->
 @@ -334,16 +334,16 @@
  // 8 and 128 are magic constants, see runtime/mkduff.go
  (Move [s] {t} dst src mem)
@@ -133,28 +109,47 @@ index 983f884849..c293c15fb5 100644
  		mem)
  
  // calls
+@@ -432,7 +432,7 @@
+ (MOVDstore [off1] {sym} (ADDconst [off2] ptr) val mem) -> (MOVDstore [off1+off2] {sym} ptr val mem)
+ (MOVDstore [off1] {sym} (SUBconst [off2] ptr) val mem) -> (MOVDstore [off1-off2] {sym} ptr val mem)
+ 
+-(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
++(MOVBload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) =>
+ 	(MOVBload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
+ (MOVBUload [off1] {sym1} (MOVWaddr [off2] {sym2} ptr) mem) && canMergeSym(sym1,sym2) ->
+ 	(MOVBUload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..028287872c 100644
+index eaf20e27b7..b7eca0209a 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
-@@ -14310,7 +14310,7 @@ func rewriteValueARM_OpMove(v *Value) bool {
- 	// match: (Move [0] _ _ mem)
- 	// result: mem
+@@ -4783,21 +4783,21 @@ func rewriteValueARM_OpARMMOVBload(v *Value) bool {
+ 	// cond: canMergeSym(sym1,sym2)
+ 	// result: (MOVBload [off1+off2] {mergeSym(sym1,sym2)} ptr mem)
  	for {
--		if v.AuxInt != 0 {
-+		if auxIntToInt64(v.AuxInt) != 0 {
+-		off1 := v.AuxInt
+-		sym1 := v.Aux
++		off1 := auxIntToInt32(v.AuxInt)
++		sym1 := auxToSym(v.Aux)
+ 		if v_0.Op != OpARMMOVWaddr {
  			break
  		}
- 		mem := v_2
-@@ -14320,7 +14320,7 @@ func rewriteValueARM_OpMove(v *Value) bool {
- 	// match: (Move [1] dst src mem)
- 	// result: (MOVBstore dst (MOVBUload src mem) mem)
- 	for {
--		if v.AuxInt != 1 {
-+		if auxIntToInt64(v.AuxInt) != 1 {
+-		off2 := v_0.AuxInt
+-		sym2 := v_0.Aux
++		off2 := auxIntToInt32(v_0.AuxInt)
++		sym2 := auxToSym(v_0.Aux)
+ 		ptr := v_0.Args[0]
+ 		mem := v_1
+ 		if !(canMergeSym(sym1, sym2)) {
  			break
  		}
- 		dst := v_0
+ 		v.reset(OpARMMOVBload)
+-		v.AuxInt = off1 + off2
+-		v.Aux = mergeSym(sym1, sym2)
++		v.AuxInt = int32ToAuxInt(off1 + off2)
++		v.Aux = symToAux(mergeSym(sym1, sym2))
+ 		v.AddArg2(ptr, mem)
+ 		return true
+ 	}
 @@ -14333,17 +14333,17 @@ func rewriteValueARM_OpMove(v *Value) bool {
  		return true
  	}
@@ -249,67 +244,6 @@ index eaf20e27b7..028287872c 100644
  		v0.AddArg2(src, mem)
  		v1 := b.NewValue0(v.Pos, OpARMMOVHstore, types.TypeMem)
  		v2 := b.NewValue0(v.Pos, OpARMMOVHUload, typ.UInt16)
-@@ -14422,26 +14422,26 @@ func rewriteValueARM_OpMove(v *Value) bool {
- 	// match: (Move [4] dst src mem)
- 	// result: (MOVBstore [3] dst (MOVBUload [3] src mem) (MOVBstore [2] dst (MOVBUload [2] src mem) (MOVBstore [1] dst (MOVBUload [1] src mem) (MOVBstore dst (MOVBUload src mem) mem))))
- 	for {
--		if v.AuxInt != 4 {
-+		if auxIntToInt64(v.AuxInt) != 4 {
- 			break
- 		}
- 		dst := v_0
- 		src := v_1
- 		mem := v_2
- 		v.reset(OpARMMOVBstore)
--		v.AuxInt = 3
-+		v.AuxInt = int32ToAuxInt(3)
- 		v0 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
--		v0.AuxInt = 3
-+		v0.AuxInt = int32ToAuxInt(3)
- 		v0.AddArg2(src, mem)
- 		v1 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v1.AuxInt = 2
-+		v1.AuxInt = int32ToAuxInt(2)
- 		v2 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
--		v2.AuxInt = 2
-+		v2.AuxInt = int32ToAuxInt(2)
- 		v2.AddArg2(src, mem)
- 		v3 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v3.AuxInt = 1
-+		v3.AuxInt = int32ToAuxInt(1)
- 		v4 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
--		v4.AuxInt = 1
-+		v4.AuxInt = int32ToAuxInt(1)
- 		v4.AddArg2(src, mem)
- 		v5 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
- 		v6 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
-@@ -14455,21 +14455,21 @@ func rewriteValueARM_OpMove(v *Value) bool {
- 	// match: (Move [3] dst src mem)
- 	// result: (MOVBstore [2] dst (MOVBUload [2] src mem) (MOVBstore [1] dst (MOVBUload [1] src mem) (MOVBstore dst (MOVBUload src mem) mem)))
- 	for {
--		if v.AuxInt != 3 {
-+		if auxIntToInt64(v.AuxInt) != 3 {
- 			break
- 		}
- 		dst := v_0
- 		src := v_1
- 		mem := v_2
- 		v.reset(OpARMMOVBstore)
--		v.AuxInt = 2
-+		v.AuxInt = int32ToAuxInt(2)
- 		v0 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
--		v0.AuxInt = 2
-+		v0.AuxInt = int32ToAuxInt(2)
- 		v0.AddArg2(src, mem)
- 		v1 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v1.AuxInt = 1
-+		v1.AuxInt = int32ToAuxInt(1)
- 		v2 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
--		v2.AuxInt = 1
-+		v2.AuxInt = int32ToAuxInt(1)
- 		v2.AddArg2(src, mem)
- 		v3 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
- 		v4 := b.NewValue0(v.Pos, OpARMMOVBUload, typ.UInt8)
 @@ -14480,38 +14480,38 @@ func rewriteValueARM_OpMove(v *Value) bool {
  		return true
  	}
@@ -553,59 +487,7 @@ index eaf20e27b7..028287872c 100644
  		v1.AddArg3(ptr, v0, mem)
  		v.AddArg3(ptr, v0, v1)
  		return true
-@@ -15866,21 +15866,21 @@ func rewriteValueARM_OpZero(v *Value) bool {
- 	// match: (Zero [4] ptr mem)
- 	// result: (MOVBstore [3] ptr (MOVWconst [0]) (MOVBstore [2] ptr (MOVWconst [0]) (MOVBstore [1] ptr (MOVWconst [0]) (MOVBstore [0] ptr (MOVWconst [0]) mem))))
- 	for {
--		if v.AuxInt != 4 {
-+		if auxIntToInt64(v.AuxInt) != 4 {
- 			break
- 		}
- 		ptr := v_0
- 		mem := v_1
- 		v.reset(OpARMMOVBstore)
--		v.AuxInt = 3
-+		v.AuxInt = int32ToAuxInt(3)
- 		v0 := b.NewValue0(v.Pos, OpARMMOVWconst, typ.UInt32)
--		v0.AuxInt = 0
-+		v0.AuxInt = int32ToAuxInt(0)
- 		v1 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v1.AuxInt = 2
-+		v1.AuxInt = int32ToAuxInt(2)
- 		v2 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v2.AuxInt = 1
-+		v2.AuxInt = int32ToAuxInt(1)
- 		v3 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v3.AuxInt = 0
-+		v3.AuxInt = int32ToAuxInt(0)
- 		v3.AddArg3(ptr, v0, mem)
- 		v2.AddArg3(ptr, v0, v3)
- 		v1.AddArg3(ptr, v0, v2)
-@@ -15890,60 +15890,60 @@ func rewriteValueARM_OpZero(v *Value) bool {
- 	// match: (Zero [3] ptr mem)
- 	// result: (MOVBstore [2] ptr (MOVWconst [0]) (MOVBstore [1] ptr (MOVWconst [0]) (MOVBstore [0] ptr (MOVWconst [0]) mem)))
- 	for {
--		if v.AuxInt != 3 {
-+		if auxIntToInt64(v.AuxInt) != 3 {
- 			break
- 		}
- 		ptr := v_0
- 		mem := v_1
- 		v.reset(OpARMMOVBstore)
--		v.AuxInt = 2
-+		v.AuxInt = int32ToAuxInt(2)
- 		v0 := b.NewValue0(v.Pos, OpARMMOVWconst, typ.UInt32)
--		v0.AuxInt = 0
-+		v0.AuxInt = int32ToAuxInt(0)
- 		v1 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v1.AuxInt = 1
-+		v1.AuxInt = int32ToAuxInt(1)
- 		v2 := b.NewValue0(v.Pos, OpARMMOVBstore, types.TypeMem)
--		v2.AuxInt = 0
-+		v2.AuxInt = int32ToAuxInt(0)
- 		v2.AddArg3(ptr, v0, mem)
- 		v1.AddArg3(ptr, v0, v2)
- 		v.AddArg3(ptr, v0, v1)
+@@ -15909,41 +15909,41 @@ func rewriteValueARM_OpZero(v *Value) bool {
  		return true
  	}
  	// match: (Zero [s] {t} ptr mem)
