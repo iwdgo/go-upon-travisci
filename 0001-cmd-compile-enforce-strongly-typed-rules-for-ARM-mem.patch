@@ -1,4 +1,4 @@
-From 70757cf076f32fd3b4b8d7b25682609e8cc0744d Mon Sep 17 00:00:00 2001
+From e6fb061a0e4ab8cd67f2ca4b781dd70789b5a265 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 20 Sep 2020 11:57:20 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (mem)
@@ -18,12 +18,12 @@ src/cmd/compile/internal/ssa/rewriteARM.go:15748:9: invalid type assertion: t.(*
 
 Change-Id: I69e8e9f964c1f35615e4e19401c3f661e1e64a3a
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules | 10 +++++-----
- src/cmd/compile/internal/ssa/rewriteARM.go | 10 +++++-----
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 10 ++++----
+ src/cmd/compile/internal/ssa/rewriteARM.go | 30 +++++++++++-----------
+ 2 files changed, 20 insertions(+), 20 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..0fd287092a 100644
+index 983f884849..b21b21c3b6 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -260,11 +260,11 @@
@@ -35,20 +35,24 @@ index 983f884849..0fd287092a 100644
 -(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) -> (MOVWstore ptr val mem)
 -(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) -> (MOVFstore ptr val mem)
 -(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 => (MOVBstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 => (MOVHstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) => (MOVWstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) => (MOVFstore ptr val mem)
-+(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) => (MOVDstore ptr val mem)
++(Store {t} ptr val mem) && t.Size() == 1 => (MOVBstore ptr val mem)
++(Store {t} ptr val mem) && t.Size() == 2 => (MOVHstore ptr val mem)
++(Store {t} ptr val mem) && t.Size() == 4 && !is32BitFloat(val.Type) => (MOVWstore ptr val mem)
++(Store {t} ptr val mem) && t.Size() == 4 && is32BitFloat(val.Type) => (MOVFstore ptr val mem)
++(Store {t} ptr val mem) && t.Size() == 8 && is64BitFloat(val.Type) => (MOVDstore ptr val mem)
  
  // zero instructions
  (Zero [0] _ mem) -> mem
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..9a1830fe71 100644
+index eaf20e27b7..458fa1cc35 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
-@@ -15681,7 +15681,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
- 	// cond: t.(*types.Type).Size() == 1
+@@ -15678,14 +15678,14 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 	v_1 := v.Args[1]
+ 	v_0 := v.Args[0]
+ 	// match: (Store {t} ptr val mem)
+-	// cond: t.(*types.Type).Size() == 1
++	// cond: t.Size() == 1
  	// result: (MOVBstore ptr val mem)
  	for {
 -		t := v.Aux
@@ -56,8 +60,17 @@ index eaf20e27b7..9a1830fe71 100644
  		ptr := v_0
  		val := v_1
  		mem := v_2
-@@ -15696,7 +15696,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
- 	// cond: t.(*types.Type).Size() == 2
+-		if !(t.(*types.Type).Size() == 1) {
++		if !(t.Size() == 1) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVBstore)
+@@ -15693,14 +15693,14 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (Store {t} ptr val mem)
+-	// cond: t.(*types.Type).Size() == 2
++	// cond: t.Size() == 2
  	// result: (MOVHstore ptr val mem)
  	for {
 -		t := v.Aux
@@ -65,8 +78,17 @@ index eaf20e27b7..9a1830fe71 100644
  		ptr := v_0
  		val := v_1
  		mem := v_2
-@@ -15711,7 +15711,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
- 	// cond: t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type)
+-		if !(t.(*types.Type).Size() == 2) {
++		if !(t.Size() == 2) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVHstore)
+@@ -15708,14 +15708,14 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (Store {t} ptr val mem)
+-	// cond: t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type)
++	// cond: t.Size() == 4 && !is32BitFloat(val.Type)
  	// result: (MOVWstore ptr val mem)
  	for {
 -		t := v.Aux
@@ -74,8 +96,17 @@ index eaf20e27b7..9a1830fe71 100644
  		ptr := v_0
  		val := v_1
  		mem := v_2
-@@ -15726,7 +15726,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
- 	// cond: t.(*types.Type).Size() == 4 && is32BitFloat(val.Type)
+-		if !(t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type)) {
++		if !(t.Size() == 4 && !is32BitFloat(val.Type)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWstore)
+@@ -15723,14 +15723,14 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (Store {t} ptr val mem)
+-	// cond: t.(*types.Type).Size() == 4 && is32BitFloat(val.Type)
++	// cond: t.Size() == 4 && is32BitFloat(val.Type)
  	// result: (MOVFstore ptr val mem)
  	for {
 -		t := v.Aux
@@ -83,8 +114,17 @@ index eaf20e27b7..9a1830fe71 100644
  		ptr := v_0
  		val := v_1
  		mem := v_2
-@@ -15741,7 +15741,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
- 	// cond: t.(*types.Type).Size() == 8 && is64BitFloat(val.Type)
+-		if !(t.(*types.Type).Size() == 4 && is32BitFloat(val.Type)) {
++		if !(t.Size() == 4 && is32BitFloat(val.Type)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVFstore)
+@@ -15738,14 +15738,14 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 		return true
+ 	}
+ 	// match: (Store {t} ptr val mem)
+-	// cond: t.(*types.Type).Size() == 8 && is64BitFloat(val.Type)
++	// cond: t.Size() == 8 && is64BitFloat(val.Type)
  	// result: (MOVDstore ptr val mem)
  	for {
 -		t := v.Aux
@@ -92,6 +132,11 @@ index eaf20e27b7..9a1830fe71 100644
  		ptr := v_0
  		val := v_1
  		mem := v_2
+-		if !(t.(*types.Type).Size() == 8 && is64BitFloat(val.Type)) {
++		if !(t.Size() == 8 && is64BitFloat(val.Type)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVDstore)
 -- 
 2.22.0.windows.1
 
