@@ -1,0 +1,90 @@
+From 35f4e1667961b8ad135bb86a736a5c8bbf6ee5a2 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Sun, 20 Sep 2020 11:57:20 +0200
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (mem)
+
+L263-L267
+(L274-L281, L293-L307, L312, L317, L319, L335, L341, L435-L459)
+(L1193-L1196, L1197-L1199)
+
+(Toolstash-check successful)
+
+Change-Id: I69e8e9f964c1f35615e4e19401c3f661e1e64a3a
+---
+ src/cmd/compile/internal/ssa/gen/ARM.rules | 10 +++++-----
+ src/cmd/compile/internal/ssa/rewriteARM.go | 10 +++++-----
+ 2 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index 983f884849..0fd287092a 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -260,11 +260,11 @@
+ (Load <t> ptr mem) && is64BitFloat(t) -> (MOVDload ptr mem)
+ 
+ // stores
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 -> (MOVBstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 -> (MOVHstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) -> (MOVWstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) -> (MOVFstore ptr val mem)
+-(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) -> (MOVDstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 1 => (MOVBstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 2 => (MOVHstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type) => (MOVWstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 4 && is32BitFloat(val.Type) => (MOVFstore ptr val mem)
++(Store {t} ptr val mem) && t.(*types.Type).Size() == 8 && is64BitFloat(val.Type) => (MOVDstore ptr val mem)
+ 
+ // zero instructions
+ (Zero [0] _ mem) -> mem
+diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
+index eaf20e27b7..9a1830fe71 100644
+--- a/src/cmd/compile/internal/ssa/rewriteARM.go
++++ b/src/cmd/compile/internal/ssa/rewriteARM.go
+@@ -15681,7 +15681,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 	// cond: t.(*types.Type).Size() == 1
+ 	// result: (MOVBstore ptr val mem)
+ 	for {
+-		t := v.Aux
++		t := auxToType(v.Aux)
+ 		ptr := v_0
+ 		val := v_1
+ 		mem := v_2
+@@ -15696,7 +15696,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 	// cond: t.(*types.Type).Size() == 2
+ 	// result: (MOVHstore ptr val mem)
+ 	for {
+-		t := v.Aux
++		t := auxToType(v.Aux)
+ 		ptr := v_0
+ 		val := v_1
+ 		mem := v_2
+@@ -15711,7 +15711,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 	// cond: t.(*types.Type).Size() == 4 && !is32BitFloat(val.Type)
+ 	// result: (MOVWstore ptr val mem)
+ 	for {
+-		t := v.Aux
++		t := auxToType(v.Aux)
+ 		ptr := v_0
+ 		val := v_1
+ 		mem := v_2
+@@ -15726,7 +15726,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 	// cond: t.(*types.Type).Size() == 4 && is32BitFloat(val.Type)
+ 	// result: (MOVFstore ptr val mem)
+ 	for {
+-		t := v.Aux
++		t := auxToType(v.Aux)
+ 		ptr := v_0
+ 		val := v_1
+ 		mem := v_2
+@@ -15741,7 +15741,7 @@ func rewriteValueARM_OpStore(v *Value) bool {
+ 	// cond: t.(*types.Type).Size() == 8 && is64BitFloat(val.Type)
+ 	// result: (MOVDstore ptr val mem)
+ 	for {
+-		t := v.Aux
++		t := auxToType(v.Aux)
+ 		ptr := v_0
+ 		val := v_1
+ 		mem := v_2
+-- 
+2.22.0.windows.1
+
