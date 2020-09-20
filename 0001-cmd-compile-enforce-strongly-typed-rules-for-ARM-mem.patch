@@ -1,22 +1,20 @@
-From a05593282ae2d18061afd58da05b7459bcf59d68 Mon Sep 17 00:00:00 2001
+From 15232057c88bcc11b658654dba82eeec9dac38c8 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 20 Sep 2020 11:57:20 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (mem)
 
 L274-L281, L293-L307, L312, L317, L319, L335, L341
 
-L1193-L1196, L1197-L1199
-
 Toolstash-check successful
 
 Change-Id: I69e8e9f964c1f35615e4e19401c3f661e1e64a3a
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules |  54 +++---
- src/cmd/compile/internal/ssa/rewriteARM.go | 206 ++++++++++-----------
- 2 files changed, 130 insertions(+), 130 deletions(-)
+ src/cmd/compile/internal/ssa/gen/ARM.rules |  42 +++---
+ src/cmd/compile/internal/ssa/rewriteARM.go | 158 ++++++++++-----------
+ 2 files changed, 100 insertions(+), 100 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..16bba23001 100644
+index 983f884849..0b3f3005f8 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -260,23 +260,23 @@
@@ -111,165 +109,10 @@ index 983f884849..16bba23001 100644
  		mem)
  
  // calls
-@@ -1190,13 +1190,13 @@
- (MOVWstoreidx ptr (SRAconst idx [c]) val mem) -> (MOVWstoreshiftRA ptr idx [c] val mem)
- (MOVWstoreidx (SRAconst idx [c]) ptr val mem) -> (MOVWstoreshiftRA ptr idx [c] val mem)
- 
--(MOVWloadshiftLL ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(uint32(c)<<uint64(d))] ptr mem)
--(MOVWloadshiftRL ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(uint32(c)>>uint64(d))] ptr mem)
--(MOVWloadshiftRA ptr (MOVWconst [c]) [d] mem) -> (MOVWload [int64(int32(c)>>uint64(d))] ptr mem)
-+(MOVWloadshiftLL ptr (MOVWconst [c]) [d] mem) => (MOVWload [uint32(c)<<uint64(d)] ptr mem)
-+(MOVWloadshiftRL ptr (MOVWconst [c]) [d] mem) => (MOVWload [uint32(c)>>uint64(d)] ptr mem)
-+(MOVWloadshiftRA ptr (MOVWconst [c]) [d] mem) => (MOVWload [int32(c)>>uint64(d)] ptr mem)
- 
--(MOVWstoreshiftLL ptr (MOVWconst [c]) [d] val mem) -> (MOVWstore [int64(uint32(c)<<uint64(d))] ptr val mem)
--(MOVWstoreshiftRL ptr (MOVWconst [c]) [d] val mem) -> (MOVWstore [int64(uint32(c)>>uint64(d))] ptr val mem)
--(MOVWstoreshiftRA ptr (MOVWconst [c]) [d] val mem) -> (MOVWstore [int64(int32(c)>>uint64(d))] ptr val mem)
-+(MOVWstoreshiftLL ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [uint32(c)<<uint64(d)] ptr val mem)
-+(MOVWstoreshiftRL ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [uint32(c)>>uint64(d)] ptr val mem)
-+(MOVWstoreshiftRA ptr (MOVWconst [c]) [d] val mem) => (MOVWstore [int32(c)>>uint64(d)] ptr val mem)
- 
- // generic simplifications
- (ADD x (RSBconst [0] y)) -> (SUB x y)
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..32523b873a 100644
+index eaf20e27b7..5a8bcac3ef 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
-@@ -6439,17 +6439,17 @@ func rewriteValueARM_OpARMMOVWloadshiftLL(v *Value) bool {
- 		return true
- 	}
- 	// match: (MOVWloadshiftLL ptr (MOVWconst [c]) [d] mem)
--	// result: (MOVWload [int64(uint32(c)<<uint64(d))] ptr mem)
-+	// result: (MOVWload [uint32(c)<<uint64(d)] ptr mem)
- 	for {
--		d := v.AuxInt
-+		d := auxIntToInt32(v.AuxInt)
- 		ptr := v_0
- 		if v_1.Op != OpARMMOVWconst {
- 			break
- 		}
--		c := v_1.AuxInt
-+		c := auxIntToInt32(v_1.AuxInt)
- 		mem := v_2
- 		v.reset(OpARMMOVWload)
--		v.AuxInt = int64(uint32(c) << uint64(d))
-+		v.AuxInt = int32ToAuxInt(uint32(c) << uint64(d))
- 		v.AddArg2(ptr, mem)
- 		return true
- 	}
-@@ -6479,17 +6479,17 @@ func rewriteValueARM_OpARMMOVWloadshiftRA(v *Value) bool {
- 		return true
- 	}
- 	// match: (MOVWloadshiftRA ptr (MOVWconst [c]) [d] mem)
--	// result: (MOVWload [int64(int32(c)>>uint64(d))] ptr mem)
-+	// result: (MOVWload [int32(c)>>uint64(d)] ptr mem)
- 	for {
--		d := v.AuxInt
-+		d := auxIntToInt32(v.AuxInt)
- 		ptr := v_0
- 		if v_1.Op != OpARMMOVWconst {
- 			break
- 		}
--		c := v_1.AuxInt
-+		c := auxIntToInt32(v_1.AuxInt)
- 		mem := v_2
- 		v.reset(OpARMMOVWload)
--		v.AuxInt = int64(int32(c) >> uint64(d))
-+		v.AuxInt = int32ToAuxInt(int32(c) >> uint64(d))
- 		v.AddArg2(ptr, mem)
- 		return true
- 	}
-@@ -6519,17 +6519,17 @@ func rewriteValueARM_OpARMMOVWloadshiftRL(v *Value) bool {
- 		return true
- 	}
- 	// match: (MOVWloadshiftRL ptr (MOVWconst [c]) [d] mem)
--	// result: (MOVWload [int64(uint32(c)>>uint64(d))] ptr mem)
-+	// result: (MOVWload [uint32(c)>>uint64(d)] ptr mem)
- 	for {
--		d := v.AuxInt
-+		d := auxIntToInt32(v.AuxInt)
- 		ptr := v_0
- 		if v_1.Op != OpARMMOVWconst {
- 			break
- 		}
--		c := v_1.AuxInt
-+		c := auxIntToInt32(v_1.AuxInt)
- 		mem := v_2
- 		v.reset(OpARMMOVWload)
--		v.AuxInt = int64(uint32(c) >> uint64(d))
-+		v.AuxInt = int32ToAuxInt(uint32(c) >> uint64(d))
- 		v.AddArg2(ptr, mem)
- 		return true
- 	}
-@@ -6860,18 +6860,18 @@ func rewriteValueARM_OpARMMOVWstoreshiftLL(v *Value) bool {
- 	v_1 := v.Args[1]
- 	v_0 := v.Args[0]
- 	// match: (MOVWstoreshiftLL ptr (MOVWconst [c]) [d] val mem)
--	// result: (MOVWstore [int64(uint32(c)<<uint64(d))] ptr val mem)
-+	// result: (MOVWstore [uint32(c)<<uint64(d)] ptr val mem)
- 	for {
--		d := v.AuxInt
-+		d := auxIntToInt32(v.AuxInt)
- 		ptr := v_0
- 		if v_1.Op != OpARMMOVWconst {
- 			break
- 		}
--		c := v_1.AuxInt
-+		c := auxIntToInt32(v_1.AuxInt)
- 		val := v_2
- 		mem := v_3
- 		v.reset(OpARMMOVWstore)
--		v.AuxInt = int64(uint32(c) << uint64(d))
-+		v.AuxInt = int32ToAuxInt(uint32(c) << uint64(d))
- 		v.AddArg3(ptr, val, mem)
- 		return true
- 	}
-@@ -6883,18 +6883,18 @@ func rewriteValueARM_OpARMMOVWstoreshiftRA(v *Value) bool {
- 	v_1 := v.Args[1]
- 	v_0 := v.Args[0]
- 	// match: (MOVWstoreshiftRA ptr (MOVWconst [c]) [d] val mem)
--	// result: (MOVWstore [int64(int32(c)>>uint64(d))] ptr val mem)
-+	// result: (MOVWstore [int32(c)>>uint64(d)] ptr val mem)
- 	for {
--		d := v.AuxInt
-+		d := auxIntToInt32(v.AuxInt)
- 		ptr := v_0
- 		if v_1.Op != OpARMMOVWconst {
- 			break
- 		}
--		c := v_1.AuxInt
-+		c := auxIntToInt32(v_1.AuxInt)
- 		val := v_2
- 		mem := v_3
- 		v.reset(OpARMMOVWstore)
--		v.AuxInt = int64(int32(c) >> uint64(d))
-+		v.AuxInt = int32ToAuxInt(int32(c) >> uint64(d))
- 		v.AddArg3(ptr, val, mem)
- 		return true
- 	}
-@@ -6906,18 +6906,18 @@ func rewriteValueARM_OpARMMOVWstoreshiftRL(v *Value) bool {
- 	v_1 := v.Args[1]
- 	v_0 := v.Args[0]
- 	// match: (MOVWstoreshiftRL ptr (MOVWconst [c]) [d] val mem)
--	// result: (MOVWstore [int64(uint32(c)>>uint64(d))] ptr val mem)
-+	// result: (MOVWstore [uint32(c)>>uint64(d)] ptr val mem)
- 	for {
--		d := v.AuxInt
-+		d := auxIntToInt32(v.AuxInt)
- 		ptr := v_0
- 		if v_1.Op != OpARMMOVWconst {
- 			break
- 		}
--		c := v_1.AuxInt
-+		c := auxIntToInt32(v_1.AuxInt)
- 		val := v_2
- 		mem := v_3
- 		v.reset(OpARMMOVWstore)
--		v.AuxInt = int64(uint32(c) >> uint64(d))
-+		v.AuxInt = int32ToAuxInt(uint32(c) >> uint64(d))
- 		v.AddArg3(ptr, val, mem)
- 		return true
- 	}
 @@ -14333,17 +14333,17 @@ func rewriteValueARM_OpMove(v *Value) bool {
  		return true
  	}
