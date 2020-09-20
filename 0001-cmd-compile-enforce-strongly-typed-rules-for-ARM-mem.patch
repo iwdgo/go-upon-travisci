@@ -1,4 +1,4 @@
-From 4acace96ba9f40946d5753fa3020fde246c9ce11 Mon Sep 17 00:00:00 2001
+From d70d723463e19390d8476b1d3777d0ee59517c22 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 20 Sep 2020 11:57:20 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (mem)
@@ -11,12 +11,12 @@ Toolstash-check successful
 
 Change-Id: I69e8e9f964c1f35615e4e19401c3f661e1e64a3a
 ---
- src/cmd/compile/internal/ssa/gen/ARM.rules |  40 +++---
+ src/cmd/compile/internal/ssa/gen/ARM.rules |  42 +++---
  src/cmd/compile/internal/ssa/rewriteARM.go | 158 ++++++++++-----------
- 2 files changed, 99 insertions(+), 99 deletions(-)
+ 2 files changed, 100 insertions(+), 100 deletions(-)
 
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
-index 983f884849..b104de5a71 100644
+index 983f884849..0b3f3005f8 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
 +++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
 @@ -260,23 +260,23 @@
@@ -63,11 +63,12 @@ index 983f884849..b104de5a71 100644
  // Large zeroing uses a loop
  (Zero [s] {t} ptr mem)
 -	&& (s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0 ->
+-	(LoweredZero [t.(*types.Type).Alignment()]
 +	&& (s > 512 || config.noDuffDevice) || t.Alignment()%4 != 0 =>
- 	(LoweredZero [t.(*types.Type).Alignment()]
++	(LoweredZero [t.Alignment()]
  		ptr
 -		(ADDconst <ptr.Type> ptr [s-moveSize(t.(*types.Type).Alignment(), config)])
-+		(ADDconst <ptr.Type> ptr [s-moveSize(t.Alignment(), config)])
++		(ADDconst <ptr.Type> ptr [int32(s-moveSize(t.Alignment(), config))])
  		(MOVWconst [0])
  		mem)
  
@@ -106,12 +107,12 @@ index 983f884849..b104de5a71 100644
  		dst
  		src
 -		(ADDconst <src.Type> src [s-moveSize(t.(*types.Type).Alignment(), config)])
-+		(ADDconst <src.Type> src [s-moveSize(t.Alignment(), config)])
++		(ADDconst <src.Type> src [int32(s-moveSize(t.Alignment(), config))])
  		mem)
  
  // calls
 diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
-index eaf20e27b7..4afba4abfa 100644
+index eaf20e27b7..5a8bcac3ef 100644
 --- a/src/cmd/compile/internal/ssa/rewriteARM.go
 +++ b/src/cmd/compile/internal/ssa/rewriteARM.go
 @@ -14333,17 +14333,17 @@ func rewriteValueARM_OpMove(v *Value) bool {
@@ -237,7 +238,7 @@ index eaf20e27b7..4afba4abfa 100644
 -	// cond: ((s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0) && logLargeCopy(v, s)
 -	// result: (LoweredMove [t.(*types.Type).Alignment()] dst src (ADDconst <src.Type> src [s-moveSize(t.(*types.Type).Alignment(), config)]) mem)
 +	// cond: ((s > 512 || config.noDuffDevice) || t.Alignment()%4 != 0) && logLargeCopy(v, s)
-+	// result: (LoweredMove [t.Alignment()] dst src (ADDconst <src.Type> src [s-moveSize(t.Alignment(), config)]) mem)
++	// result: (LoweredMove [t.Alignment()] dst src (ADDconst <src.Type> src [int32(s-moveSize(t.Alignment(), config))]) mem)
  	for {
 -		s := v.AuxInt
 -		t := v.Aux
@@ -255,7 +256,7 @@ index eaf20e27b7..4afba4abfa 100644
 +		v.AuxInt = int64ToAuxInt(t.Alignment())
  		v0 := b.NewValue0(v.Pos, OpARMADDconst, src.Type)
 -		v0.AuxInt = s - moveSize(t.(*types.Type).Alignment(), config)
-+		v0.AuxInt = int32ToAuxInt(s - moveSize(t.Alignment(), config))
++		v0.AuxInt = int32ToAuxInt(int32(s - moveSize(t.Alignment(), config)))
  		v0.AddArg(src)
  		v.AddArg4(dst, src, v0, mem)
  		return true
@@ -482,7 +483,7 @@ index eaf20e27b7..4afba4abfa 100644
 -	// cond: (s > 512 || config.noDuffDevice) || t.(*types.Type).Alignment()%4 != 0
 -	// result: (LoweredZero [t.(*types.Type).Alignment()] ptr (ADDconst <ptr.Type> ptr [s-moveSize(t.(*types.Type).Alignment(), config)]) (MOVWconst [0]) mem)
 +	// cond: (s > 512 || config.noDuffDevice) || t.Alignment()%4 != 0
-+	// result: (LoweredZero [t.(*types.Type).Alignment()] ptr (ADDconst <ptr.Type> ptr [s-moveSize(t.Alignment(), config)]) (MOVWconst [0]) mem)
++	// result: (LoweredZero [t.Alignment()] ptr (ADDconst <ptr.Type> ptr [int32(s-moveSize(t.Alignment(), config))]) (MOVWconst [0]) mem)
  	for {
 -		s := v.AuxInt
 -		t := v.Aux
@@ -496,10 +497,10 @@ index eaf20e27b7..4afba4abfa 100644
  		}
  		v.reset(OpARMLoweredZero)
 -		v.AuxInt = t.(*types.Type).Alignment()
-+		v.AuxInt = int64ToAuxInt(t.(*types.Type).Alignment())
++		v.AuxInt = int64ToAuxInt(t.Alignment())
  		v0 := b.NewValue0(v.Pos, OpARMADDconst, ptr.Type)
 -		v0.AuxInt = s - moveSize(t.(*types.Type).Alignment(), config)
-+		v0.AuxInt = int32ToAuxInt(s - moveSize(t.Alignment(), config))
++		v0.AuxInt = int32ToAuxInt(int32(s - moveSize(t.Alignment(), config)))
  		v0.AddArg(ptr)
  		v1 := b.NewValue0(v.Pos, OpARMMOVWconst, typ.UInt32)
 -		v1.AuxInt = 0
