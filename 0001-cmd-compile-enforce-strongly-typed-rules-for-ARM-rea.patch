@@ -1,27 +1,18 @@
-From 8fe44d39aff65e76180e4dde2f80724002cba5e0 Mon Sep 17 00:00:00 2001
+From 172cbe9fe37d4df90d8ce86f2eeb3a35648ed043 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
-Date: Thu, 24 Sep 2020 18:38:08 +0200
+Date: Thu, 24 Sep 2020 18:54:58 +0200
 Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (read)
 
-Type casting of offset.
+Add type casting for offset.
 
 toolstash-check successful.
 
-Change-Id: I6f3252bd163ba14ad0944ebafccd802bb2622a5e
+Change-Id: I1c2e4eb55195364ed832898c7d5d359e8df4da5b
 ---
- .gitcookies                                |  1 +
  src/cmd/compile/internal/ssa/gen/ARM.rules |  6 +++---
  src/cmd/compile/internal/ssa/rewriteARM.go | 24 +++++++++++-----------
- 3 files changed, 16 insertions(+), 15 deletions(-)
- create mode 100644 .gitcookies
+ 2 files changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/.gitcookies b/.gitcookies
-new file mode 100644
-index 0000000000..d6371ebe12
---- /dev/null
-+++ b/.gitcookies
-@@ -0,0 +1 @@
-+.googlesource.com	TRUE	/	TRUE	2147483647	o	git-constantinkonstantinidis.gmail.com=1//03UEtowBzLrH2CgYIARAAGAMSNwF-L9IrivVvo_ylWQ-ZDp4mJ05KIUdci-4XLP-fxctDmxaeJwggTxgcMGw_MkMuyD2ozkKvv_E
 diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
 index 840b93bb53..3f93195862 100644
 --- a/src/cmd/compile/internal/ssa/gen/ARM.rules
