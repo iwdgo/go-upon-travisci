@@ -1,0 +1,105 @@
+From 8fe44d39aff65e76180e4dde2f80724002cba5e0 Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Thu, 24 Sep 2020 18:38:08 +0200
+Subject: [PATCH] cmd/compile: enforce strongly typed rules for ARM (read)
+
+Type casting of offset.
+
+toolstash-check successful.
+
+Change-Id: I6f3252bd163ba14ad0944ebafccd802bb2622a5e
+---
+ .gitcookies                                |  1 +
+ src/cmd/compile/internal/ssa/gen/ARM.rules |  6 +++---
+ src/cmd/compile/internal/ssa/rewriteARM.go | 24 +++++++++++-----------
+ 3 files changed, 16 insertions(+), 15 deletions(-)
+ create mode 100644 .gitcookies
+
+diff --git a/.gitcookies b/.gitcookies
+new file mode 100644
+index 0000000000..d6371ebe12
+--- /dev/null
++++ b/.gitcookies
+@@ -0,0 +1 @@
++.googlesource.com	TRUE	/	TRUE	2147483647	o	git-constantinkonstantinidis.gmail.com=1//03UEtowBzLrH2CgYIARAAGAMSNwF-L9IrivVvo_ylWQ-ZDp4mJ05KIUdci-4XLP-fxctDmxaeJwggTxgcMGw_MkMuyD2ozkKvv_E
+diff --git a/src/cmd/compile/internal/ssa/gen/ARM.rules b/src/cmd/compile/internal/ssa/gen/ARM.rules
+index 840b93bb53..3f93195862 100644
+--- a/src/cmd/compile/internal/ssa/gen/ARM.rules
++++ b/src/cmd/compile/internal/ssa/gen/ARM.rules
+@@ -1470,6 +1470,6 @@
+ (GE (CMPconst [0] l:(XORshiftRLreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftRLreg x y z) yes no)
+ (GE (CMPconst [0] l:(XORshiftRAreg x y z)) yes no) && l.Uses==1 => (GE (TEQshiftRAreg x y z) yes no)
+ 
+-(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read8(sym, off))])
+-(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
+-(MOVWload [off] {sym} (SB) _) && symIsRO(sym) -> (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
++(MOVBUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int32(read8(sym, int64(off)))])
++(MOVHUload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int32(read16(sym, int64(off), config.ctxt.Arch.ByteOrder))])
++(MOVWload [off] {sym} (SB) _) && symIsRO(sym) => (MOVWconst [int32(read32(sym, int64(off), config.ctxt.Arch.ByteOrder))])
+diff --git a/src/cmd/compile/internal/ssa/rewriteARM.go b/src/cmd/compile/internal/ssa/rewriteARM.go
+index b790d28cac..e09dbf1a22 100644
+--- a/src/cmd/compile/internal/ssa/rewriteARM.go
++++ b/src/cmd/compile/internal/ssa/rewriteARM.go
+@@ -4627,15 +4627,15 @@ func rewriteValueARM_OpARMMOVBUload(v *Value) bool {
+ 	}
+ 	// match: (MOVBUload [off] {sym} (SB) _)
+ 	// cond: symIsRO(sym)
+-	// result: (MOVWconst [int64(read8(sym, off))])
++	// result: (MOVWconst [int32(read8(sym, int64(off)))])
+ 	for {
+-		off := v.AuxInt
+-		sym := v.Aux
++		off := auxIntToInt32(v.AuxInt)
++		sym := auxToSym(v.Aux)
+ 		if v_0.Op != OpSB || !(symIsRO(sym)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(read8(sym, off))
++		v.AuxInt = int32ToAuxInt(int32(read8(sym, int64(off))))
+ 		return true
+ 	}
+ 	return false
+@@ -5540,15 +5540,15 @@ func rewriteValueARM_OpARMMOVHUload(v *Value) bool {
+ 	}
+ 	// match: (MOVHUload [off] {sym} (SB) _)
+ 	// cond: symIsRO(sym)
+-	// result: (MOVWconst [int64(read16(sym, off, config.ctxt.Arch.ByteOrder))])
++	// result: (MOVWconst [int32(read16(sym, int64(off), config.ctxt.Arch.ByteOrder))])
+ 	for {
+-		off := v.AuxInt
+-		sym := v.Aux
++		off := auxIntToInt32(v.AuxInt)
++		sym := auxToSym(v.Aux)
+ 		if v_0.Op != OpSB || !(symIsRO(sym)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(read16(sym, off, config.ctxt.Arch.ByteOrder))
++		v.AuxInt = int32ToAuxInt(int32(read16(sym, int64(off), config.ctxt.Arch.ByteOrder)))
+ 		return true
+ 	}
+ 	return false
+@@ -6261,15 +6261,15 @@ func rewriteValueARM_OpARMMOVWload(v *Value) bool {
+ 	}
+ 	// match: (MOVWload [off] {sym} (SB) _)
+ 	// cond: symIsRO(sym)
+-	// result: (MOVWconst [int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))])
++	// result: (MOVWconst [int32(read32(sym, int64(off), config.ctxt.Arch.ByteOrder))])
+ 	for {
+-		off := v.AuxInt
+-		sym := v.Aux
++		off := auxIntToInt32(v.AuxInt)
++		sym := auxToSym(v.Aux)
+ 		if v_0.Op != OpSB || !(symIsRO(sym)) {
+ 			break
+ 		}
+ 		v.reset(OpARMMOVWconst)
+-		v.AuxInt = int64(int32(read32(sym, off, config.ctxt.Arch.ByteOrder)))
++		v.AuxInt = int32ToAuxInt(int32(read32(sym, int64(off), config.ctxt.Arch.ByteOrder)))
+ 		return true
+ 	}
+ 	return false
+-- 
+2.22.0.windows.1
+
