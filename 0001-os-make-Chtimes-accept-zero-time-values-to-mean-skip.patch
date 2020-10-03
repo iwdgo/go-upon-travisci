@@ -1,4 +1,4 @@
-From cc5149bd56b44e107daf3cd7280d4c43635f7e14 Mon Sep 17 00:00:00 2001
+From 9685dee3b84e6e4552e95681bfdc99c977f91508 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -18,7 +18,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_aix.go           |  1 +
  src/internal/syscall/unix/at_darwin.go        |  2 +
  src/internal/syscall/unix/at_freebsd.go       |  2 +
- src/internal/syscall/unix/at_js.go            |  9 ++
+ src/internal/syscall/unix/at_js.go            | 13 +++
  src/internal/syscall/unix/at_solaris.go       |  2 +
  .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
  src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
@@ -29,9 +29,9 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
  src/os/os_test.go                             | 82 +++++++++++++++++++
- src/syscall/fs_js.go                          | 13 +++
+ src/syscall/fs_js.go                          | 14 ++++
  src/syscall/syscall_windows.go                | 20 ++++-
- 16 files changed, 156 insertions(+), 6 deletions(-)
+ 16 files changed, 161 insertions(+), 6 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -72,10 +72,10 @@ index e171f4dbb5..6cc5e8aef5 100644
  func Unlinkat(dirfd int, path string, flags int) error {
 diff --git a/src/internal/syscall/unix/at_js.go b/src/internal/syscall/unix/at_js.go
 new file mode 100644
-index 0000000000..b51f092e16
+index 0000000000..f63ca97c31
 --- /dev/null
 +++ b/src/internal/syscall/unix/at_js.go
-@@ -0,0 +1,9 @@
+@@ -0,0 +1,13 @@
 +// Copyright 2018 The Go Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style
 +// license that can be found in the LICENSE file.
@@ -83,6 +83,10 @@ index 0000000000..b51f092e16
 +package unix
 +
 +const (
++	// UTIME_OMIT is the sentinel value to indicate that a time value should not
++	// be changed. It is useful for example to indicate for example with UtimesNano
++	// to avoid changing AccessTime or ModifiedTime.
++	// Its value must match syscall/fs_js.go
 +	UTIME_OMIT = -0x2
 +)
 diff --git a/src/internal/syscall/unix/at_solaris.go b/src/internal/syscall/unix/at_solaris.go
@@ -137,10 +141,10 @@ index c2d48b9914..fd389477ec 100644
 +
 +const UTIME_OMIT = -0x1
 diff --git a/src/os/file_plan9.go b/src/os/file_plan9.go
-index eb158905ab..5279db7586 100644
+index a1a51a1c06..39f8b76779 100644
 --- a/src/os/file_plan9.go
 +++ b/src/os/file_plan9.go
-@@ -402,6 +402,7 @@ func chmod(name string, mode FileMode) error {
+@@ -407,6 +407,7 @@ func chmod(name string, mode FileMode) error {
  
  // Chtimes changes the access and modification times of the named
  // file, similar to the Unix utime() or utimes() functions.
@@ -148,7 +152,7 @@ index eb158905ab..5279db7586 100644
  //
  // The underlying filesystem may truncate or round the values to a
  // less precise time unit.
-@@ -412,6 +413,12 @@ func Chtimes(name string, atime time.Time, mtime time.Time) error {
+@@ -417,6 +418,12 @@ func Chtimes(name string, atime time.Time, mtime time.Time) error {
  	d.Null()
  	d.Atime = uint32(atime.Unix())
  	d.Mtime = uint32(mtime.Unix())
@@ -162,10 +166,10 @@ index eb158905ab..5279db7586 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index 24ea554b62..ed9c84ced0 100644
+index ae23d22d0a..42773c1b96 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
-@@ -163,14 +163,22 @@ func (f *File) Sync() error {
+@@ -173,14 +173,22 @@ func (f *File) Sync() error {
  
  // Chtimes changes the access and modification times of the named
  // file, similar to the Unix utime() or utimes() functions.
@@ -191,7 +195,7 @@ index 24ea554b62..ed9c84ced0 100644
  		return &PathError{"chtimes", name, e}
  	}
 diff --git a/src/os/file_unix.go b/src/os/file_unix.go
-index f2c00ae0cb..7b172b895b 100644
+index e0f16d809d..6db2c9e254 100644
 --- a/src/os/file_unix.go
 +++ b/src/os/file_unix.go
 @@ -14,6 +14,8 @@ import (
@@ -204,7 +208,7 @@ index f2c00ae0cb..7b172b895b 100644
  func fixLongPath(path string) string {
  	return path
 diff --git a/src/os/file_windows.go b/src/os/file_windows.go
-index cc695fd94c..00d2fb5ec0 100644
+index f744a35023..e996fba600 100644
 --- a/src/os/file_windows.go
 +++ b/src/os/file_windows.go
 @@ -14,6 +14,8 @@ import (
@@ -217,10 +221,10 @@ index cc695fd94c..00d2fb5ec0 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index e8c64510f5..cee80ca72c 100644
+index 2bb57d866f..5d78b41966 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1277,6 +1277,88 @@ func TestFileChdir(t *testing.T) {
+@@ -1286,6 +1286,88 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
@@ -310,18 +314,19 @@ index e8c64510f5..cee80ca72c 100644
  	// TODO(brainman): file.Chdir() is not implemented on windows.
  	if runtime.GOOS == "windows" {
 diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
-index 262ec28afd..9ca6165dc2 100644
+index 262ec28afd..54904167af 100644
 --- a/src/syscall/fs_js.go
 +++ b/src/syscall/fs_js.go
-@@ -274,6 +274,7 @@ func Lchown(path string, uid, gid int) error {
+@@ -274,6 +274,8 @@ func Lchown(path string, uid, gid int) error {
  }
  
  func UtimesNano(path string, ts []Timespec) error {
++	// UTIME_OMIT value must match internal/syscall/unix/at_js.go
 +	const UTIME_OMIT = -0x2
  	if err := checkPath(path); err != nil {
  		return err
  	}
-@@ -282,6 +283,18 @@ func UtimesNano(path string, ts []Timespec) error {
+@@ -282,6 +284,18 @@ func UtimesNano(path string, ts []Timespec) error {
  	}
  	atime := ts[0].Sec
  	mtime := ts[1].Sec
@@ -341,7 +346,7 @@ index 262ec28afd..9ca6165dc2 100644
  	return err
  }
 diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
-index f62c00d72f..c082ee186a 100644
+index f62c00d72f..875999b164 100644
 --- a/src/syscall/syscall_windows.go
 +++ b/src/syscall/syscall_windows.go
 @@ -587,8 +587,14 @@ func Utimes(path string, tv []Timeval) (err error) {
@@ -355,7 +360,7 @@ index f62c00d72f..c082ee186a 100644
 +	if tv[0].Nanoseconds() != 0 {
 +		a = NsecToFiletime(tv[0].Nanoseconds())
 +	}
-+	if tv[1].Nanoseconds() != 0 {
++	if tv[0].Nanoseconds() != 0 {
 +		w = NsecToFiletime(tv[1].Nanoseconds())
 +	}
  	return SetFileTime(h, nil, &a, &w)
@@ -379,5 +384,5 @@ index f62c00d72f..c082ee186a 100644
  }
  
 -- 
-2.22.0.windows.1
+2.28.0.windows.1
 
