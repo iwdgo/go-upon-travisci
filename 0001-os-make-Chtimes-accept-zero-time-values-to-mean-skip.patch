@@ -1,4 +1,4 @@
-From 8e20802865324c758a9c5ba23214814fe0251549 Mon Sep 17 00:00:00 2001
+From 47581d5346ed84c7b60ceeae11c8b457fa4bd058 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -166,7 +166,7 @@ index a1a51a1c06..39f8b76779 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index ae23d22d0a..ecc9059a7d 100644
+index ae23d22d0a..c8856034ae 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
 @@ -173,14 +173,26 @@ func (f *File) Sync() error {
@@ -187,7 +187,7 @@ index ae23d22d0a..ecc9059a7d 100644
 +			utimes[i] = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
 +			// libc requires (int64, int32)
 +			if runtime.GOOS == "darwin" && runtime.GOARCH == "amd64" {
-+				utimes[i] = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: 0}
++				utimes[i] = syscall.Timespec{Sec: 0, Nsec: _UTIME_OMIT}
 +			}
 +		} else {
 +			utimes[i] = syscall.NsecToTimespec(t.UnixNano())
