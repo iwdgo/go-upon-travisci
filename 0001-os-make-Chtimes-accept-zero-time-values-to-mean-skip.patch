@@ -1,4 +1,4 @@
-From 9685dee3b84e6e4552e95681bfdc99c977f91508 Mon Sep 17 00:00:00 2001
+From 8e20802865324c758a9c5ba23214814fe0251549 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -25,13 +25,13 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
  .../syscall/unix/at_sysnum_openbsd.go         |  2 +
  src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 12 ++-
+ src/os/file_posix.go                          | 16 +++-
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 82 +++++++++++++++++++
- src/syscall/fs_js.go                          | 14 ++++
+ src/os/os_test.go                             | 88 +++++++++++++++++++
+ src/syscall/fs_js.go                          | 14 +++
  src/syscall/syscall_windows.go                | 20 ++++-
- 16 files changed, 161 insertions(+), 6 deletions(-)
+ 16 files changed, 171 insertions(+), 6 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -166,10 +166,10 @@ index a1a51a1c06..39f8b76779 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index ae23d22d0a..42773c1b96 100644
+index ae23d22d0a..ecc9059a7d 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
-@@ -173,14 +173,22 @@ func (f *File) Sync() error {
+@@ -173,14 +173,26 @@ func (f *File) Sync() error {
  
  // Chtimes changes the access and modification times of the named
  // file, similar to the Unix utime() or utimes() functions.
@@ -185,6 +185,10 @@ index ae23d22d0a..42773c1b96 100644
 +	set := func(i int, t time.Time) {
 +		if t.IsZero() {
 +			utimes[i] = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
++			// libc requires (int64, int32)
++			if runtime.GOOS == "darwin" && runtime.GOARCH == "amd64" {
++				utimes[i] = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: 0}
++			}
 +		} else {
 +			utimes[i] = syscall.NsecToTimespec(t.UnixNano())
 +		}
@@ -221,10 +225,10 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 2bb57d866f..5d78b41966 100644
+index 2bb57d866f..35eda78bb8 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1286,6 +1286,88 @@ func TestFileChdir(t *testing.T) {
+@@ -1286,6 +1286,94 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
@@ -302,7 +306,13 @@ index 2bb57d866f..5d78b41966 100644
 +		mt0 = fs.ModTime()
 +
 +		if got, want := at0, tt.wantATime; !got.Equal(want) {
-+			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			switch Getenv("GO_BUILDER_NAME") {
++			case "plan9-arm", "netbsd-amd64-9_0":
++				// Mtime cannot be handled on some builders.
++				// For netbsd, see issue 19293.
++			default:
++				t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			}
 +		}
 +		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
 +			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
