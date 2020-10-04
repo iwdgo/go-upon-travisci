@@ -1,4 +1,4 @@
-From 47581d5346ed84c7b60ceeae11c8b457fa4bd058 Mon Sep 17 00:00:00 2001
+From 99d0e30454e6650075638ba090a281e6e5e74307 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -25,13 +25,14 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
  .../syscall/unix/at_sysnum_openbsd.go         |  2 +
  src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 16 +++-
+ src/os/file_posix.go                          | 12 ++-
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
  src/os/os_test.go                             | 88 +++++++++++++++++++
  src/syscall/fs_js.go                          | 14 +++
+ src/syscall/syscall_bsd.go                    |  8 ++
  src/syscall/syscall_windows.go                | 20 ++++-
- 16 files changed, 171 insertions(+), 6 deletions(-)
+ 17 files changed, 175 insertions(+), 6 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -166,10 +167,10 @@ index a1a51a1c06..39f8b76779 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index ae23d22d0a..c8856034ae 100644
+index ae23d22d0a..42773c1b96 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
-@@ -173,14 +173,26 @@ func (f *File) Sync() error {
+@@ -173,14 +173,22 @@ func (f *File) Sync() error {
  
  // Chtimes changes the access and modification times of the named
  // file, similar to the Unix utime() or utimes() functions.
@@ -185,10 +186,6 @@ index ae23d22d0a..c8856034ae 100644
 +	set := func(i int, t time.Time) {
 +		if t.IsZero() {
 +			utimes[i] = syscall.Timespec{Sec: _UTIME_OMIT, Nsec: _UTIME_OMIT}
-+			// libc requires (int64, int32)
-+			if runtime.GOOS == "darwin" && runtime.GOARCH == "amd64" {
-+				utimes[i] = syscall.Timespec{Sec: 0, Nsec: _UTIME_OMIT}
-+			}
 +		} else {
 +			utimes[i] = syscall.NsecToTimespec(t.UnixNano())
 +		}
@@ -355,6 +352,25 @@ index 262ec28afd..54904167af 100644
  	_, err := fsCall("utimes", path, atime, mtime)
  	return err
  }
+diff --git a/src/syscall/syscall_bsd.go b/src/syscall/syscall_bsd.go
+index 1c7ec588bc..ee06e0c9dc 100644
+--- a/src/syscall/syscall_bsd.go
++++ b/src/syscall/syscall_bsd.go
+@@ -538,6 +538,14 @@ func UtimesNano(path string, ts []Timespec) error {
+ 		NsecToTimeval(TimespecToNsec(ts[0])),
+ 		NsecToTimeval(TimespecToNsec(ts[1])),
+ 	}
++	// When utimensat is not implemented (Darwin), preparing data blurs UTIME_OMIT
++	const UTIME_OMIT = -0x2
++	if (ts[0].Sec == UTIME_OMIT) {
++		tv[0] = UTIME_OMIT
++	}
++	if (ts[1].Sec == UTIME_OMIT) {
++		tv[1] = UTIME_OMIT
++	}
+ 	return utimes(path, (*[2]Timeval)(unsafe.Pointer(&tv[0])))
+ }
+ 
 diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
 index f62c00d72f..875999b164 100644
 --- a/src/syscall/syscall_windows.go
