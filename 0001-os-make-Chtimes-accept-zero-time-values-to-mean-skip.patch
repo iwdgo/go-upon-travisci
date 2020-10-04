@@ -1,4 +1,4 @@
-From fc12b02a3ff8c0c4a0333295dc9181ce0c4da288 Mon Sep 17 00:00:00 2001
+From 9c2a9986ab9cb5c5dc79327ea4f6e956a4d8fb96 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -353,7 +353,7 @@ index 262ec28afd..54904167af 100644
  	return err
  }
 diff --git a/src/syscall/syscall_bsd.go b/src/syscall/syscall_bsd.go
-index 1c7ec588bc..68da42fbed 100644
+index 1c7ec588bc..92c339e357 100644
 --- a/src/syscall/syscall_bsd.go
 +++ b/src/syscall/syscall_bsd.go
 @@ -538,6 +538,14 @@ func UtimesNano(path string, ts []Timespec) error {
@@ -361,7 +361,7 @@ index 1c7ec588bc..68da42fbed 100644
  		NsecToTimeval(TimespecToNsec(ts[1])),
  	}
 +	// When utimensat is not implemented (Darwin), preparing data blurs UTIME_OMIT
-+	const UTIME_OMIT = ((1 << 30) - 2)
++	const UTIME_OMIT = -0x2 // ((1 << 30) - 2)
 +	if (ts[0].Sec == UTIME_OMIT) {
 +		tv[0] = setTimeval(0, UTIME_OMIT)
 +	}
