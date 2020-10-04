@@ -1,4 +1,4 @@
-From 00462fa74c1812f659fdca68edd0d412b1e747fb Mon Sep 17 00:00:00 2001
+From 567d541366cdf3cef1f7ebdd64d5832bcc14b50a Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sat, 15 Aug 2020 11:47:16 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,11 +28,10 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          | 12 ++-
  src/os/file_unix.go                           |  2 +
  src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 88 +++++++++++++++++++
+ src/os/os_test.go                             | 91 +++++++++++++++++++
  src/syscall/fs_js.go                          | 14 +++
- src/syscall/syscall_bsd.go                    |  8 ++
- src/syscall/syscall_windows.go                | 20 ++++-
- 17 files changed, 175 insertions(+), 6 deletions(-)
+ src/syscall/syscall_windows.go                | 20 +++-
+ 16 files changed, 170 insertions(+), 6 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -222,15 +221,18 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 2bb57d866f..35eda78bb8 100644
+index 2bb57d866f..6f142c5374 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1286,6 +1286,94 @@ func TestFileChdir(t *testing.T) {
+@@ -1286,6 +1286,97 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
 +func TestChtimesWithZeroTimes(t *testing.T) {
-+
++	switch Getenv("GO_BUILDER_NAME") {
++	case "darwin-amd64-10_14":
++		t.Skip(" On Darwin, utimensat is sometimes unavailable")
++	}
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())
 +
@@ -352,25 +354,6 @@ index 262ec28afd..54904167af 100644
  	_, err := fsCall("utimes", path, atime, mtime)
  	return err
  }
-diff --git a/src/syscall/syscall_bsd.go b/src/syscall/syscall_bsd.go
-index 1c7ec588bc..5b0668ac01 100644
---- a/src/syscall/syscall_bsd.go
-+++ b/src/syscall/syscall_bsd.go
-@@ -538,6 +538,14 @@ func UtimesNano(path string, ts []Timespec) error {
- 		NsecToTimeval(TimespecToNsec(ts[0])),
- 		NsecToTimeval(TimespecToNsec(ts[1])),
- 	}
-+	// When utimensat is not implemented (Darwin), preparing data blurs UTIME_OMIT
-+	const UTIME_OMIT = -0x2 // ((1 << 30) - 2)
-+	if (ts[0].Sec == UTIME_OMIT) {
-+		tv[0] = setTimeval(UTIME_OMIT, 0)
-+	}
-+	if (ts[1].Sec == UTIME_OMIT) {
-+		tv[1] = setTimeval(UTIME_OMIT, 0)
-+	}
- 	return utimes(path, (*[2]Timeval)(unsafe.Pointer(&tv[0])))
- }
- 
 diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
 index f62c00d72f..875999b164 100644
 --- a/src/syscall/syscall_windows.go
