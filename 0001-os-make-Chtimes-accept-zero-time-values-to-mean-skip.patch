@@ -1,4 +1,4 @@
-From 9ed11ae925e05f70e329ec44ff766ffd2bcfdc88 Mon Sep 17 00:00:00 2001
+From f1c50f2cfe396bc19644230f49d3e9aaf7b64f22 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -15,27 +15,27 @@ Fixes #32558
 
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
- src/internal/syscall/unix/at_aix.go           |  1 +
- src/internal/syscall/unix/at_darwin.go        |  2 +
- src/internal/syscall/unix/at_freebsd.go       |  2 +
- src/internal/syscall/unix/at_js.go            | 13 +++
- src/internal/syscall/unix/at_solaris.go       |  2 +
- .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
- src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
- src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
- .../syscall/unix/at_sysnum_openbsd.go         |  2 +
- src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 12 ++-
- src/os/file_unix.go                           |  2 +
- src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 91 +++++++++++++++++++
- src/syscall/fs_js.go                          | 14 +++
- src/syscall/syscall_bsd.go                    |  6 +-
- src/syscall/syscall_darwin.go                 |  5 +-
- src/syscall/syscall_windows.go                | 20 +++-
- src/syscall/zsyscall_darwin_amd64.go          | 18 ++++
- src/syscall/zsyscall_darwin_amd64.s           |  4 +
- 20 files changed, 196 insertions(+), 13 deletions(-)
+ src/internal/syscall/unix/at_aix.go           |   1 +
+ src/internal/syscall/unix/at_darwin.go        |   2 +
+ src/internal/syscall/unix/at_freebsd.go       |   2 +
+ src/internal/syscall/unix/at_js.go            |  13 +++
+ src/internal/syscall/unix/at_solaris.go       |   2 +
+ .../syscall/unix/at_sysnum_dragonfly.go       |   2 +
+ src/internal/syscall/unix/at_sysnum_linux.go  |   2 +
+ src/internal/syscall/unix/at_sysnum_netbsd.go |   2 +
+ .../syscall/unix/at_sysnum_openbsd.go         |   2 +
+ src/os/file_plan9.go                          |   7 ++
+ src/os/file_posix.go                          |  12 ++-
+ src/os/file_unix.go                           |   2 +
+ src/os/file_windows.go                        |   2 +
+ src/os/os_test.go                             | 101 ++++++++++++++++++
+ src/syscall/fs_js.go                          |  14 +++
+ src/syscall/syscall_bsd.go                    |   6 +-
+ src/syscall/syscall_darwin.go                 |   5 +-
+ src/syscall/syscall_windows.go                |  20 +++-
+ src/syscall/zsyscall_darwin_amd64.go          |  18 ++++
+ src/syscall/zsyscall_darwin_amd64.s           |   2 +
+ 20 files changed, 204 insertions(+), 13 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,18 +225,28 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 2bb57d866f..6f142c5374 100644
+index 2bb57d866f..a82c9d10d6 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1286,6 +1286,97 @@ func TestFileChdir(t *testing.T) {
+@@ -1286,6 +1286,107 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
 +func TestChtimesWithZeroTimes(t *testing.T) {
-+	switch Getenv("GO_BUILDER_NAME") {
-+	case "darwin-amd64-10_14":
-+		t.Skip(" On Darwin, utimensat is sometimes unavailable")
++	var uname syscall.Utsname
++	if err := syscall.Uname(&uname); err != nil {
++		t.Fatalf("Uname: %v", err)
 +	}
++	var buf [65]byte
++	for i, b := range uname.Release {
++		buf[i] = byte(b)
++	}
++	ver := string(buf[:])
++	if i := strings.Index(ver, "\x00"); i != -1 {
++		ver = ver[:i]
++	}
++	t.Logf("%v", ver)
++
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())
 +
@@ -462,17 +472,15 @@ index 093739ebc7..0dfbf62ea5 100644
  
  func kill(pid int, signum int, posix int) (err error) {
 diff --git a/src/syscall/zsyscall_darwin_amd64.s b/src/syscall/zsyscall_darwin_amd64.s
-index d99656d028..93a6d8224b 100644
+index d99656d028..8f5e6a26e5 100644
 --- a/src/syscall/zsyscall_darwin_amd64.s
 +++ b/src/syscall/zsyscall_darwin_amd64.s
-@@ -53,6 +53,10 @@ TEXT ·libc_fcntl_trampoline(SB),NOSPLIT,$0-0
+@@ -53,6 +53,8 @@ TEXT ·libc_fcntl_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_fcntl(SB)
  TEXT ·libc_pipe_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_pipe(SB)
 +TEXT ·libc_utimensat_trampoline(SB),NOSPLIT,$0-0
-+#ifdef utimensat
 +	JMP	libc_utimensat(SB)
-+#endif
  TEXT ·libc_kill_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_kill(SB)
  TEXT ·libc_access_trampoline(SB),NOSPLIT,$0-0
