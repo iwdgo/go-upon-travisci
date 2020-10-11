@@ -1,4 +1,4 @@
-From f1c50f2cfe396bc19644230f49d3e9aaf7b64f22 Mon Sep 17 00:00:00 2001
+From e0e531568de8af44758430bc84abc97253217148 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,14 +28,14 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 ++-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 101 ++++++++++++++++++
+ src/os/os_test.go                             | 102 ++++++++++++++++++
  src/syscall/fs_js.go                          |  14 +++
  src/syscall/syscall_bsd.go                    |   6 +-
  src/syscall/syscall_darwin.go                 |   5 +-
  src/syscall/syscall_windows.go                |  20 +++-
  src/syscall/zsyscall_darwin_amd64.go          |  18 ++++
  src/syscall/zsyscall_darwin_amd64.s           |   2 +
- 20 files changed, 204 insertions(+), 13 deletions(-)
+ 20 files changed, 205 insertions(+), 13 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,16 +225,24 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 2bb57d866f..a82c9d10d6 100644
+index 2bb57d866f..c8baf39100 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1286,6 +1286,107 @@ func TestFileChdir(t *testing.T) {
+@@ -9,6 +9,7 @@ import (
+ 	"errors"
+ 	"flag"
+ 	"fmt"
++	"golang.org/x/sys/unix"
+ 	"internal/testenv"
+ 	"io"
+ 	"io/ioutil"
+@@ -1286,6 +1287,107 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
 +func TestChtimesWithZeroTimes(t *testing.T) {
-+	var uname syscall.Utsname
-+	if err := syscall.Uname(&uname); err != nil {
++	var uname unix.Utsname
++	if err := unix.Uname(&uname); err != nil {
 +		t.Fatalf("Uname: %v", err)
 +	}
 +	var buf [65]byte
@@ -245,7 +253,7 @@ index 2bb57d866f..a82c9d10d6 100644
 +	if i := strings.Index(ver, "\x00"); i != -1 {
 +		ver = ver[:i]
 +	}
-+	t.Logf("%v", ver)
++	fmt.Printf("%v", ver)
 +
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())

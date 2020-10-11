@@ -63,4 +63,5 @@ after_success:
   - cd ..
   - pwd
   - ./bin/go tool dist version
-  - ./bin/go tool dist test
+  # - ./bin/go tool dist test
+  - ./bin/go tool dist test -run=".*os.*"
