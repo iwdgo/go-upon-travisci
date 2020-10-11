@@ -9,19 +9,17 @@ os:
 
 jobs:
   include:
-    - os: linux
-      dist: bionic
-    - os: linux
-      dist: xenial
-    - os: osx # MacOS 10.15.5
+    # - os: linux
+    #  dist: bionic
+    # - os: linux
+    #  dist: xenial
+    - os: osx # MacOS 10.15.5, Darwin 19.6.0
       osx_image: xcode12.2
-    - os: osx # MacOS 10.14.6
+    - os: osx # MacOS 10.14.6, Darwin 18.7.0
       osx_image: xcode11.3
-    - os: osx # MacOS 10.13
+    - os: osx # MacOS 10.13, Darwin 17.7.0 for all images, fails when UTIME_OMIT is not both values
       osx_image: xcode10.1
-    - os: osx # MacOS 10.13
-      osx_image: xcode9.4
-    - os: osx # MacOS 10.12
+    - os: osx # MacOS 10.12, Darwin 16.7.0, build fails on _utimensat
       osx_image: xcode9.2
 
 go: 1.11.x

@@ -1,6 +1,6 @@
-From 1d2438e36524356f542546034554f4229ce959bd Mon Sep 17 00:00:00 2001
+From 43535e86ef537e5c57d52d4e4bde7d00b6f5cd66 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
-Date: Sat, 15 Aug 2020 11:47:16 +0200
+Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
  file modification
 
@@ -15,7 +15,6 @@ Fixes #32558
 
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
- .gitcookies                                   |  2 +
  src/internal/syscall/unix/at_aix.go           |  1 +
  src/internal/syscall/unix/at_darwin.go        |  2 +
  src/internal/syscall/unix/at_freebsd.go       |  2 +
@@ -35,19 +34,10 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/syscall_darwin.go                 |  5 +-
  src/syscall/syscall_windows.go                | 20 +++-
  src/syscall/zsyscall_darwin_amd64.go          | 18 ++++
- src/syscall/zsyscall_darwin_amd64.s           |  2 +
- 21 files changed, 196 insertions(+), 13 deletions(-)
- create mode 100644 .gitcookies
+ src/syscall/zsyscall_darwin_amd64.s           |  4 +
+ 20 files changed, 196 insertions(+), 13 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
-diff --git a/.gitcookies b/.gitcookies
-new file mode 100644
-index 0000000000..1adf100159
---- /dev/null
-+++ b/.gitcookies
-@@ -0,0 +1,2 @@
-+go.googlesource.com	FALSE	/	TRUE	2147483647	o	git-constantinkonstantinidis.gmail.com=1//03xYuHzyYijWaCgYIARAAGAMSNwF-L9IrnwZA6wmP0FY80O6tZrmELKjffvoby76K-neBWd32T1B-t_er0U9rD9EirDEynvMf_MY
-+go-review.googlesource.com	FALSE	/	TRUE	2147483647	o	git-constantinkonstantinidis.gmail.com=1//03xYuHzyYijWaCgYIARAAGAMSNwF-L9IrnwZA6wmP0FY80O6tZrmELKjffvoby76K-neBWd32T1B-t_er0U9rD9EirDEynvMf_MY
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
 index 425df98211..3fe3285ce2 100644
 --- a/src/internal/syscall/unix/at_aix.go
@@ -472,15 +462,17 @@ index 093739ebc7..0dfbf62ea5 100644
  
  func kill(pid int, signum int, posix int) (err error) {
 diff --git a/src/syscall/zsyscall_darwin_amd64.s b/src/syscall/zsyscall_darwin_amd64.s
-index d99656d028..8f5e6a26e5 100644
+index d99656d028..7b0a6e54fa 100644
 --- a/src/syscall/zsyscall_darwin_amd64.s
 +++ b/src/syscall/zsyscall_darwin_amd64.s
-@@ -53,6 +53,8 @@ TEXT ·libc_fcntl_trampoline(SB),NOSPLIT,$0-0
+@@ -53,6 +53,10 @@ TEXT ·libc_fcntl_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_fcntl(SB)
  TEXT ·libc_pipe_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_pipe(SB)
 +TEXT ·libc_utimensat_trampoline(SB),NOSPLIT,$0-0
++#ifdef _utimensat
 +	JMP	libc_utimensat(SB)
++#endif
  TEXT ·libc_kill_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_kill(SB)
  TEXT ·libc_access_trampoline(SB),NOSPLIT,$0-0
