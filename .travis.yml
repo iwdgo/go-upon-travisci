@@ -3,8 +3,8 @@ language: go
 arch: amd64
 
 os:
-  - windows
-  - linux
+  # - windows
+  # - linux
   - osx
 
 include:
@@ -12,6 +12,16 @@ include:
     dist: bionic
   - os: linux
     dist: xenial
+  - os: osx # MacOS 10.15.5
+    osx_image: xcode12.2
+  - os: osx # MacOS 10.14.6
+    osx_image: xcode11.3
+  - os: osx # MacOS 10.13
+    osx_image: xcode10.1
+  - os: osx # MacOS 10.13
+    osx_image: xcode9.4
+  - os: osx # MacOS 10.12
+    osx_image: xcode9.2
 
 go: 1.11.x
 
