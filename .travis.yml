@@ -41,6 +41,7 @@ before_script:
   - echo "On tip"
   - git log -1 --pretty=short
   - echo "Set up"
+  - go get -u golang.org/x/sys/unix # For some calls
   - export GOROOT_BOOTSTRAP=$(go env GOROOT)
   - go env
   - echo "Merge travis ci fixes"
