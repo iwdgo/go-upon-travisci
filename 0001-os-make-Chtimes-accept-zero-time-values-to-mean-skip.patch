@@ -1,4 +1,4 @@
-From 43535e86ef537e5c57d52d4e4bde7d00b6f5cd66 Mon Sep 17 00:00:00 2001
+From 9ed11ae925e05f70e329ec44ff766ffd2bcfdc88 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -462,7 +462,7 @@ index 093739ebc7..0dfbf62ea5 100644
  
  func kill(pid int, signum int, posix int) (err error) {
 diff --git a/src/syscall/zsyscall_darwin_amd64.s b/src/syscall/zsyscall_darwin_amd64.s
-index d99656d028..7b0a6e54fa 100644
+index d99656d028..93a6d8224b 100644
 --- a/src/syscall/zsyscall_darwin_amd64.s
 +++ b/src/syscall/zsyscall_darwin_amd64.s
 @@ -53,6 +53,10 @@ TEXT ·libc_fcntl_trampoline(SB),NOSPLIT,$0-0
@@ -470,7 +470,7 @@ index d99656d028..7b0a6e54fa 100644
  TEXT ·libc_pipe_trampoline(SB),NOSPLIT,$0-0
  	JMP	libc_pipe(SB)
 +TEXT ·libc_utimensat_trampoline(SB),NOSPLIT,$0-0
-+#ifdef _utimensat
++#ifdef utimensat
 +	JMP	libc_utimensat(SB)
 +#endif
  TEXT ·libc_kill_trampoline(SB),NOSPLIT,$0-0
