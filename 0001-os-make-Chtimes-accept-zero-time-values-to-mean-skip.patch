@@ -1,4 +1,4 @@
-From e0e531568de8af44758430bc84abc97253217148 Mon Sep 17 00:00:00 2001
+From 10ac7096506a3dcbec870b0c3181097662c6f638 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -16,7 +16,7 @@ Fixes #32558
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
  src/internal/syscall/unix/at_aix.go           |   1 +
- src/internal/syscall/unix/at_darwin.go        |   2 +
+ src/internal/syscall/unix/at_darwin.go        |  56 ++++++++++
  src/internal/syscall/unix/at_freebsd.go       |   2 +
  src/internal/syscall/unix/at_js.go            |  13 +++
  src/internal/syscall/unix/at_solaris.go       |   2 +
@@ -35,7 +35,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/syscall_windows.go                |  20 +++-
  src/syscall/zsyscall_darwin_amd64.go          |  18 ++++
  src/syscall/zsyscall_darwin_amd64.s           |   2 +
- 20 files changed, 205 insertions(+), 13 deletions(-)
+ 20 files changed, 259 insertions(+), 13 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -49,7 +49,7 @@ index 425df98211..3fe3285ce2 100644
 +	UTIME_OMIT          = -0x3
  )
 diff --git a/src/internal/syscall/unix/at_darwin.go b/src/internal/syscall/unix/at_darwin.go
-index a88a27e0c6..e2f17187e0 100644
+index a88a27e0c6..0b61a0946e 100644
 --- a/src/internal/syscall/unix/at_darwin.go
 +++ b/src/internal/syscall/unix/at_darwin.go
 @@ -9,6 +9,8 @@ import (
@@ -61,6 +61,64 @@ index a88a27e0c6..e2f17187e0 100644
  func Unlinkat(dirfd int, path string, flags int) error {
  	return unlinkat(dirfd, path, flags)
  }
+@@ -29,3 +31,57 @@ func openat(dirfd int, path string, flags int, perm uint32) (int, error)
+ 
+ //go:linkname fstatat syscall.fstatat
+ func fstatat(dirfd int, path string, stat *syscall.Stat_t, flags int) error
++
++type Utsname struct {
++	Sysname  [256]byte
++	Nodename [256]byte
++	Release  [256]byte
++	Version  [256]byte
++	Machine  [256]byte
++}
++
++func Uname(uname *Utsname) error {
++	mib := []_C_int{CTL_KERN, KERN_OSTYPE}
++	n := unsafe.Sizeof(uname.Sysname)
++	if err := sysctl(mib, &uname.Sysname[0], &n, nil, 0); err != nil {
++		return err
++	}
++
++	mib = []_C_int{CTL_KERN, KERN_HOSTNAME}
++	n = unsafe.Sizeof(uname.Nodename)
++	if err := sysctl(mib, &uname.Nodename[0], &n, nil, 0); err != nil {
++		return err
++	}
++
++	mib = []_C_int{CTL_KERN, KERN_OSRELEASE}
++	n = unsafe.Sizeof(uname.Release)
++	if err := sysctl(mib, &uname.Release[0], &n, nil, 0); err != nil {
++		return err
++	}
++
++	mib = []_C_int{CTL_KERN, KERN_VERSION}
++	n = unsafe.Sizeof(uname.Version)
++	if err := sysctl(mib, &uname.Version[0], &n, nil, 0); err != nil {
++		return err
++	}
++
++	// The version might have newlines or tabs in it, convert them to
++	// spaces.
++	for i, b := range uname.Version {
++		if b == '\n' || b == '\t' {
++			if i == len(uname.Version)-1 {
++				uname.Version[i] = 0
++			} else {
++				uname.Version[i] = ' '
++			}
++		}
++	}
++
++	mib = []_C_int{CTL_HW, HW_MACHINE}
++	n = unsafe.Sizeof(uname.Machine)
++	if err := sysctl(mib, &uname.Machine[0], &n, nil, 0); err != nil {
++		return err
++	}
++
++	return nil
++}
 diff --git a/src/internal/syscall/unix/at_freebsd.go b/src/internal/syscall/unix/at_freebsd.go
 index e171f4dbb5..6cc5e8aef5 100644
 --- a/src/internal/syscall/unix/at_freebsd.go
@@ -225,17 +283,17 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 2bb57d866f..c8baf39100 100644
+index 2bb57d866f..261acc29ce 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -9,6 +9,7 @@ import (
- 	"errors"
+@@ -10,6 +10,7 @@ import (
  	"flag"
  	"fmt"
-+	"golang.org/x/sys/unix"
  	"internal/testenv"
++	"internal/syscall/unix"
  	"io"
  	"io/ioutil"
+ 	. "os"
 @@ -1286,6 +1287,107 @@ func TestFileChdir(t *testing.T) {
  	}
  }
