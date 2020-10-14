@@ -1,4 +1,4 @@
-From d385c84994a50a92b4693271650d8913df64ec2d Mon Sep 17 00:00:00 2001
+From b13851a5dd357fb6ef1772d58888dffd86d6cbc6 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -403,7 +403,7 @@ index 1c7ec588bc..159988d9b6 100644
  		return err
  	}
 diff --git a/src/syscall/syscall_darwin.go b/src/syscall/syscall_darwin.go
-index afdadbf894..56a28d9798 100644
+index afdadbf894..2f5f23e10c 100644
 --- a/src/syscall/syscall_darwin.go
 +++ b/src/syscall/syscall_darwin.go
 @@ -151,10 +151,7 @@ func libc_setattrlist_trampoline()
@@ -423,11 +423,11 @@ index afdadbf894..56a28d9798 100644
  //sys	getcwd(buf []byte) (n int, err error)
  
 +type Utsname struct {
-+	Sysname  [SYS_NAMELEN]byte
-+	Nodename [SYS_NAMELEN]byte
-+	Release  [SYS_NAMELEN]byte
-+	Version  [SYS_NAMELEN]byte
-+	Machine  [SYS_NAMELEN]byte
++	Sysname  [256]byte
++	Nodename [256]byte
++	Release  [256]byte
++	Version  [256]byte
++	Machine  [256]byte
 +}
 +
 +//sys   Uname(name *Utsname) (err error)
