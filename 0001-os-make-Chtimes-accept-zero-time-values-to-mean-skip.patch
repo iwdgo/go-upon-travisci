@@ -1,4 +1,4 @@
-From ed72ab0bfbfe4adb8c76dff67e545ab5a4b6cad4 Mon Sep 17 00:00:00 2001
+From d385c84994a50a92b4693271650d8913df64ec2d Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,7 +28,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 114 +++++++++++++
+ src/os/os_test.go                             | 113 +++++++++++++
  src/syscall/fs_js.go                          |  14 ++
  src/syscall/syscall_bsd.go                    |   6 +-
  src/syscall/syscall_darwin.go                 |  15 +-
@@ -36,7 +36,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/zsyscall_darwin_adm64.s           |   0
  src/syscall/zsyscall_darwin_amd64.go          | 154 ++++--------------
  src/syscall/zsyscall_darwin_amd64.s           |   4 +
- 21 files changed, 244 insertions(+), 134 deletions(-)
+ 21 files changed, 243 insertions(+), 134 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
  create mode 100644 src/syscall/zsyscall_darwin_adm64.s
 
@@ -227,10 +227,10 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..caa05d19ee 100644
+index 865dfcc0de..5aafb1001a 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1286,6 +1286,120 @@ func TestFileChdir(t *testing.T) {
+@@ -1286,6 +1286,119 @@ func TestFileChdir(t *testing.T) {
  	}
  }
  
@@ -241,8 +241,7 @@ index 865dfcc0de..caa05d19ee 100644
 +	}
 +	t.Log("uname")
 +
-+	const utsnamelength = 65
-+	buf := make([]byte, utsnamelength)
++	buf := make([]byte, len(uname.Version))
 +	for i, b := range uname.Version {
 +		buf[i] = byte(b)
 +	}
@@ -252,7 +251,7 @@ index 865dfcc0de..caa05d19ee 100644
 +	}
 +	t.Logf("%v", ver)
 +
-+	buf = make([]byte, utsnamelength)
++	buf = make([]byte, len(uname.Release))
 +	for i, b := range uname.Release {
 +		buf[i] = byte(b)
 +	}
@@ -404,7 +403,7 @@ index 1c7ec588bc..159988d9b6 100644
  		return err
  	}
 diff --git a/src/syscall/syscall_darwin.go b/src/syscall/syscall_darwin.go
-index afdadbf894..2f5f23e10c 100644
+index afdadbf894..56a28d9798 100644
 --- a/src/syscall/syscall_darwin.go
 +++ b/src/syscall/syscall_darwin.go
 @@ -151,10 +151,7 @@ func libc_setattrlist_trampoline()
@@ -424,11 +423,11 @@ index afdadbf894..2f5f23e10c 100644
  //sys	getcwd(buf []byte) (n int, err error)
  
 +type Utsname struct {
-+	Sysname  [256]byte
-+	Nodename [256]byte
-+	Release  [256]byte
-+	Version  [256]byte
-+	Machine  [256]byte
++	Sysname  [SYS_NAMELEN]byte
++	Nodename [SYS_NAMELEN]byte
++	Release  [SYS_NAMELEN]byte
++	Version  [SYS_NAMELEN]byte
++	Machine  [SYS_NAMELEN]byte
 +}
 +
 +//sys   Uname(name *Utsname) (err error)
