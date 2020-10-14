@@ -1,4 +1,4 @@
-From e1fc4eb3fb67e5e40f14581038bf33f43a184655 Mon Sep 17 00:00:00 2001
+From ed72ab0bfbfe4adb8c76dff67e545ab5a4b6cad4 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -227,7 +227,7 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 2bb57d866f..3dd92bf858 100644
+index 865dfcc0de..caa05d19ee 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
 @@ -1286,6 +1286,120 @@ func TestFileChdir(t *testing.T) {
@@ -352,10 +352,10 @@ index 2bb57d866f..3dd92bf858 100644
  	// TODO(brainman): file.Chdir() is not implemented on windows.
  	if runtime.GOOS == "windows" {
 diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
-index 262ec28afd..54904167af 100644
+index 673feea77f..95bf4b7f0c 100644
 --- a/src/syscall/fs_js.go
 +++ b/src/syscall/fs_js.go
-@@ -274,6 +274,8 @@ func Lchown(path string, uid, gid int) error {
+@@ -273,6 +273,8 @@ func Lchown(path string, uid, gid int) error {
  }
  
  func UtimesNano(path string, ts []Timespec) error {
@@ -364,7 +364,7 @@ index 262ec28afd..54904167af 100644
  	if err := checkPath(path); err != nil {
  		return err
  	}
-@@ -282,6 +284,18 @@ func UtimesNano(path string, ts []Timespec) error {
+@@ -281,6 +283,18 @@ func UtimesNano(path string, ts []Timespec) error {
  	}
  	atime := ts[0].Sec
  	mtime := ts[1].Sec
@@ -404,7 +404,7 @@ index 1c7ec588bc..159988d9b6 100644
  		return err
  	}
 diff --git a/src/syscall/syscall_darwin.go b/src/syscall/syscall_darwin.go
-index afdadbf894..37bba88c86 100644
+index afdadbf894..2f5f23e10c 100644
 --- a/src/syscall/syscall_darwin.go
 +++ b/src/syscall/syscall_darwin.go
 @@ -151,10 +151,7 @@ func libc_setattrlist_trampoline()
@@ -424,11 +424,11 @@ index afdadbf894..37bba88c86 100644
  //sys	getcwd(buf []byte) (n int, err error)
  
 +type Utsname struct {
-+	Sysname  [65]byte
-+	Nodename [65]byte
-+	Release  [65]byte
-+	Version  [65]byte
-+	Machine  [65]byte
++	Sysname  [256]byte
++	Nodename [256]byte
++	Release  [256]byte
++	Version  [256]byte
++	Machine  [256]byte
 +}
 +
 +//sys   Uname(name *Utsname) (err error)
