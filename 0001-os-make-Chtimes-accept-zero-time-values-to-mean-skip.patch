@@ -1,4 +1,4 @@
-From 7735f07a2408e504aadd0e0b3bc4d7661135bfaf Mon Sep 17 00:00:00 2001
+From c0ba08f70520918eeb535f55b52acbdb141632a6 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,7 +28,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 139 +++++++++++++---
+ src/os/os_test.go                             | 133 ++++++++++++---
  src/syscall/fs_js.go                          |  14 ++
  src/syscall/syscall_bsd.go                    |   6 +-
  src/syscall/syscall_darwin.go                 |  15 +-
@@ -36,7 +36,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/zsyscall_darwin_adm64.s           |   0
  src/syscall/zsyscall_darwin_amd64.go          | 154 ++++--------------
  src/syscall/zsyscall_darwin_amd64.s           |   4 +
- 21 files changed, 247 insertions(+), 156 deletions(-)
+ 21 files changed, 241 insertions(+), 156 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
  create mode 100644 src/syscall/zsyscall_darwin_adm64.s
 
@@ -227,10 +227,10 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..17e8aeb8ae 100644
+index 865dfcc0de..4d29480713 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1251,38 +1251,133 @@ func testChtimes(t *testing.T, name string) {
+@@ -1251,38 +1251,127 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -240,7 +240,6 @@ index 865dfcc0de..17e8aeb8ae 100644
 -		return
 +func TestChtimesWithZeroTimes(t *testing.T) {
 +	bothUtimensat := false
-+
 +	switch Getenv("GO_BUILDER_NAME") {
 +	// TODO CHeck limited support
 +	case "plan9-arm", "netbsd-amd64-9_0":
@@ -264,20 +263,15 @@ index 865dfcc0de..17e8aeb8ae 100644
 +				t.Logf("Uname: %v", err)
 +				// Uname failed but kernel might be adequate
 +			}
-+			/*
 +			buf := make([]byte, len(uname.Release))
 +			for i, b := range uname.Release {
 +				buf[i] = byte(b)
 +			}
 +
-+			 */
 +			ver := string(uname.Release)
-+			/*
 +			if i := strings.Index(ver, "\x00"); i != -1 {
-+				rel = rel[:i]
++				ver = ver[:i]
 +			}
-+
-+			 */
 +			t.Logf("%v", ver)
 +			if len(ver) == 0 {
 +				t.Error("no kernel version")
