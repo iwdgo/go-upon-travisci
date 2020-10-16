@@ -1,4 +1,4 @@
-From b13851a5dd357fb6ef1772d58888dffd86d6cbc6 Mon Sep 17 00:00:00 2001
+From 7735f07a2408e504aadd0e0b3bc4d7661135bfaf Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,7 +28,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 113 +++++++++++++
+ src/os/os_test.go                             | 139 +++++++++++++---
  src/syscall/fs_js.go                          |  14 ++
  src/syscall/syscall_bsd.go                    |   6 +-
  src/syscall/syscall_darwin.go                 |  15 +-
@@ -36,7 +36,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/zsyscall_darwin_adm64.s           |   0
  src/syscall/zsyscall_darwin_amd64.go          | 154 ++++--------------
  src/syscall/zsyscall_darwin_amd64.s           |   4 +
- 21 files changed, 243 insertions(+), 134 deletions(-)
+ 21 files changed, 247 insertions(+), 156 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
  create mode 100644 src/syscall/zsyscall_darwin_adm64.s
 
@@ -227,64 +227,107 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..5aafb1001a 100644
+index 865dfcc0de..17e8aeb8ae 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1286,6 +1286,119 @@ func TestFileChdir(t *testing.T) {
+@@ -1251,38 +1251,133 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
+-func TestFileChdir(t *testing.T) {
+-	// TODO(brainman): file.Chdir() is not implemented on windows.
+-	if runtime.GOOS == "windows" {
+-		return
 +func TestChtimesWithZeroTimes(t *testing.T) {
-+	var uname syscall.Utsname
-+	if err := syscall.Uname(&uname); err != nil {
-+		t.Fatalf("Uname: %v", err)
-+	}
-+	t.Log("uname")
++	bothUtimensat := false
 +
-+	buf := make([]byte, len(uname.Version))
-+	for i, b := range uname.Version {
-+		buf[i] = byte(b)
-+	}
-+	ver := string(buf[:])
-+	if i := strings.Index(ver, "\x00"); i != -1 {
-+		ver = ver[:i]
-+	}
-+	t.Logf("%v", ver)
++	switch Getenv("GO_BUILDER_NAME") {
++	// TODO CHeck limited support
++	case "plan9-arm", "netbsd-amd64-9_0":
++		// Access time (Atime) cannot be handled on some builders.
++		// For netbsd, see issue 19293.
++		bothUtimensat = true
+ 	}
+ 
+-	wd, err := Getwd()
+-	if err != nil {
+-		t.Fatalf("Getwd: %s", err)
++	switch runtime.GOOS {
++	case "darwin":
++		{
++			// Utimensat behaves differently on Darwin depending on kernel
++			// kernel > 17 supports separate UTIME_OMIT
++			// kernel = 17 supports both UTIME_OMIT
++			// kernel < 17 does not support utimensat
++			var uname syscall.Utsname
++			if err := syscall.Uname(&uname); err != nil {
++				t.Logf("Uname: %v", err)
++				// Uname failed but kernel might be adequate
++			}
++			/*
++			buf := make([]byte, len(uname.Release))
++			for i, b := range uname.Release {
++				buf[i] = byte(b)
++			}
 +
-+	buf = make([]byte, len(uname.Release))
-+	for i, b := range uname.Release {
-+		buf[i] = byte(b)
-+	}
-+	rel := string(buf[:])
-+	if i := strings.Index(ver, "\x00"); i != -1 {
-+		ver = ver[:i]
-+	}
-+	t.Logf("%v", rel)
++			 */
++			ver := string(uname.Release)
++			/*
++			if i := strings.Index(ver, "\x00"); i != -1 {
++				rel = rel[:i]
++			}
 +
++			 */
++			t.Logf("%v", ver)
++			if len(ver) == 0 {
++				t.Error("no kernel version")
++			}
++			kernelRelease := strings.TrimLeft(ver, ".")
++			if kernelRelease < "17" {
++				t.Skipf("darwin does not have utimensat on kernel %s", kernelRelease)
++			}
++			// On 17.x, Mtime is always modified
++			bothUtimensat = kernelRelease == "17"
++		}
+ 	}
+-	defer Chdir(wd)
+ 
+-	fd, err := Open(".")
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())
 +
 +	_, err := file.Write([]byte("hello, world\n"))
-+	if err != nil {
+ 	if err != nil {
+-		t.Fatalf("Open .: %s", err)
 +		t.Fatalf("Write: %s", err)
-+	}
+ 	}
+-	defer fd.Close()
+-
+-	if err := Chdir("/"); err != nil {
+-		t.Fatalf("Chdir /: %s", err)
 +	fName := file.Name()
 +	file.Close()
 +	fs, err := Stat(fName)
 +	if err != nil {
 +		t.Fatal(err)
-+	}
+ 	}
+-
+-	if err := fd.Chdir(); err != nil {
+-		t.Fatalf("fd.Chdir: %s", err)
 +	startAtime := Atime(fs)
 +	startMtime := fs.ModTime()
 +	switch runtime.GOOS {
 +	case "js":
 +		startAtime = startAtime.Truncate(time.Second)
 +		startMtime = startMtime.Truncate(time.Second)
-+	}
+ 	}
 +	at0 := startAtime
 +	mt0 := startMtime
 +	t0 := startMtime.Truncate(time.Second).Add(1 * time.Hour)
-+
+ 
+-	wdNew, err := Getwd()
+-	if err != nil {
+-		t.Fatalf("Getwd: %s", err)
 +	tests := []struct {
 +		aTime     time.Time
 +		mTime     time.Time
@@ -314,7 +357,9 @@ index 865dfcc0de..5aafb1001a 100644
 +			wantMTime: t0.Add(100 * time.Second),
 +			wantATime: t0.Add(300 * time.Second),
 +		},
-+	}
+ 	}
+-	if wdNew != wd {
+-		t.Fatalf("fd.Chdir failed, got %s, want %s", wdNew, wd)
 +
 +	for _, tt := range tests {
 +		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
@@ -332,24 +377,15 @@ index 865dfcc0de..5aafb1001a 100644
 +		at0 = Atime(fs)
 +		mt0 = fs.ModTime()
 +
-+		if got, want := at0, tt.wantATime; !got.Equal(want) {
-+			switch Getenv("GO_BUILDER_NAME") {
-+			case "plan9-arm", "netbsd-amd64-9_0":
-+				// Mtime cannot be handled on some builders.
-+				// For netbsd, see issue 19293.
-+			default:
-+				t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
-+			}
++		if got, want := at0, tt.wantATime; !got.Equal(want) && !bothUtimensat {
++			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
 +		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
 +			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
-+	}
-+}
-+
- func TestChdirAndGetwd(t *testing.T) {
- 	// TODO(brainman): file.Chdir() is not implemented on windows.
- 	if runtime.GOOS == "windows" {
+ 	}
+ }
+ 
 diff --git a/src/syscall/fs_js.go b/src/syscall/fs_js.go
 index 673feea77f..95bf4b7f0c 100644
 --- a/src/syscall/fs_js.go
