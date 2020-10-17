@@ -1,4 +1,4 @@
-From 61089b27b621fb428454a4e7f3561e8752862e52 Mon Sep 17 00:00:00 2001
+From 4726c88d7e628753a4cf2970738554676c24fe89 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -227,7 +227,7 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..8af0f50e4c 100644
+index 865dfcc0de..157400bf4c 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
 @@ -19,6 +19,7 @@ import (
@@ -271,7 +271,7 @@ index 865dfcc0de..8af0f50e4c 100644
 +				t.Logf("Uname: %v", err)
 +				// Uname failed but kernel might be adequate
 +			}
-+			ver := string(uname.Release[:bytes.Index(uname.Release, []byte{0})])
++			ver := string(uname.Release[0:bytes.Index(uname.Release, []byte{0})])
 +			/*
 +			buf := make([]byte, len(uname.Release))
 +			for i, b := range uname.Release {
