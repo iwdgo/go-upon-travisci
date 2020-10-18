@@ -1,4 +1,4 @@
-From 4c087141570c76c74fdca2110e03935e4d3419a3 Mon Sep 17 00:00:00 2001
+From ba8b362e9ca4114e2e2226345db92128ed28ad22 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,14 +28,14 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 117 +++++++++++++
+ src/os/os_test.go                             | 125 ++++++++++++++++
  src/syscall/fs_js.go                          |  14 ++
  src/syscall/syscall_bsd.go                    |   6 +-
- src/syscall/syscall_darwin.go                 |  15 +-
+ src/syscall/syscall_darwin.go                 |  24 +++-
  src/syscall/syscall_windows.go                |  20 ++-
- src/syscall/zsyscall_darwin_amd64.go          | 154 ++++--------------
+ src/syscall/zsyscall_darwin_amd64.go          | 135 ++----------------
  src/syscall/zsyscall_darwin_amd64.s           |   4 +
- 20 files changed, 247 insertions(+), 134 deletions(-)
+ 20 files changed, 246 insertions(+), 133 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,10 +225,10 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..a760c31f85 100644
+index 865dfcc0de..e422516f51 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -19,11 +19,14 @@ import (
+@@ -19,6 +19,7 @@ import (
  	"runtime"
  	"runtime/debug"
  	"sort"
@@ -236,17 +236,29 @@ index 865dfcc0de..a760c31f85 100644
  	"strings"
  	"sync"
  	"syscall"
- 	"testing"
- 	"time"
-+
-+	"unix"
- )
- 
- var dot = []string{
-@@ -1251,6 +1254,120 @@ func testChtimes(t *testing.T, name string) {
+@@ -1251,6 +1252,130 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
++func darwinKernelVersion(t *testing.T) (i int) {
++	// Utimensat behaves differently on Darwin depending on kernel
++	// kernel > 17 supports separate UTIME_OMIT
++	// kernel = 17 supports both UTIME_OMIT
++	// kernel < 17 does not support utimensat
++	var uname syscall.Utsname
++	if err := syscall.Uname(&uname); err != nil {
++		t.Logf("Uname: %v", err)
++		// Uname failed but kernel might be adequate
++	}
++	ver := string(uname.Release[0:bytes.Index(uname.Release[0:len(uname.Release)], []byte{0})])
++	n, err := strconv.Atoi(ver[:strings.Index(ver, ".")])
++	if err != nil {
++		t.Log(err)
++		return 0
++	}
++	return n
++}
++
 +func TestChtimesWithZeroTimes(t *testing.T) {
 +	bothUtimensat := false
 +	switch Getenv("GO_BUILDER_NAME") {
@@ -263,21 +275,12 @@ index 865dfcc0de..a760c31f85 100644
 +			// kernel > 17 supports separate UTIME_OMIT
 +			// kernel = 17 supports both UTIME_OMIT
 +			// kernel < 17 does not support utimensat
-+			var uname unix.Utsname
-+			if err := unix.Uname(&uname); err != nil {
-+				t.Logf("Uname: %v", err)
-+				// Uname failed but kernel might be adequate
++			if n := darwinKernelVersion(t); n < 17 {
++				t.Skipf("darwin does not implement utimensat on kernel %d.*", n)
++			} else {
++				// On 17.x, Mtime is always modified
++				bothUtimensat = n == 17
 +			}
-+			ver := string(uname.Release[0:bytes.Index(uname.Release[0:len(uname.Release)], []byte{0})])
-+			n, err := strconv.Atoi(ver[:strings.Index(ver, ".")])
-+			if err != nil {
-+				t.Log(err)
-+			}
-+			if n < 17 {
-+				t.Skipf("darwin does not have utimensat on kernel %s", ver)
-+			}
-+			// On 17.x, Mtime is always modified
-+			bothUtimensat = n == 17
 +		}
 +	}
 +
@@ -417,22 +420,31 @@ index 1c7ec588bc..159988d9b6 100644
  		return err
  	}
 diff --git a/src/syscall/syscall_darwin.go b/src/syscall/syscall_darwin.go
-index afdadbf894..2f5f23e10c 100644
+index afdadbf894..b1c307bfbe 100644
 --- a/src/syscall/syscall_darwin.go
 +++ b/src/syscall/syscall_darwin.go
-@@ -151,10 +151,7 @@ func libc_setattrlist_trampoline()
+@@ -151,9 +151,17 @@ func libc_setattrlist_trampoline()
  //go:linkname libc_setattrlist libc_setattrlist
  //go:cgo_import_dynamic libc_setattrlist setattrlist "/usr/lib/libSystem.B.dylib"
  
 -func utimensat(dirfd int, path string, times *[2]Timespec, flag int) error {
 -	// Darwin doesn't support SYS_UTIMENSAT
 -	return ENOSYS
--}
-+//sys	utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error)
++func utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error) {
++	var _p0 *byte
++	_p0, err = BytePtrFromString(path)
++	if err != nil {
++		return
++	}
++	_, _, e1 := syscall6(uintptr(unsafe.Pointer(&libc_Utimensat)), uintptr(dirfd), uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(times)), uintptr(flag), 0, 0)
++	if e1 != 0 {
++		err = errnoErr(e1)
++	}
++	return
+ }
  
  /*
-  * Wrapped
-@@ -261,6 +258,16 @@ func Kill(pid int, signum Signal) (err error) { return kill(pid, int(signum), 1)
+@@ -261,6 +269,16 @@ func Kill(pid int, signum Signal) (err error) { return kill(pid, int(signum), 1)
  //sys   openat(fd int, path string, flags int, perm uint32) (fdret int, err error)
  //sys	getcwd(buf []byte) (n int, err error)
  
@@ -488,7 +500,7 @@ index f62c00d72f..875999b164 100644
  }
  
 diff --git a/src/syscall/zsyscall_darwin_amd64.go b/src/syscall/zsyscall_darwin_amd64.go
-index 093739ebc7..cadf5445ee 100644
+index 093739ebc7..07dca9283b 100644
 --- a/src/syscall/zsyscall_darwin_amd64.go
 +++ b/src/syscall/zsyscall_darwin_amd64.go
 @@ -19,7 +19,6 @@ func getgroups(ngid int, gid *_Gid_t) (n int, err error) {
@@ -659,7 +671,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fcntl libc_fcntl
  //go:cgo_import_dynamic libc_fcntl fcntl "/usr/lib/libSystem.B.dylib"
  
-@@ -359,12 +338,30 @@ func pipe(p *[2]int32) (err error) {
+@@ -359,7 +338,6 @@ func pipe(p *[2]int32) (err error) {
  }
  
  func libc_pipe_trampoline()
@@ -667,31 +679,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_pipe libc_pipe
  //go:cgo_import_dynamic libc_pipe pipe "/usr/lib/libSystem.B.dylib"
  
- // THIS FILE IS GENERATED BY THE COMMAND AT THE TOP; DO NOT EDIT
- 
-+func utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error) {
-+	var _p0 *byte
-+	_p0, err = BytePtrFromString(path)
-+	if err != nil {
-+		return
-+	}
-+	_, _, e1 := syscall6(funcPC(libc_utimensat_trampoline), uintptr(dirfd), uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(times)), uintptr(flag), 0, 0)
-+	if e1 != 0 {
-+		err = errnoErr(e1)
-+	}
-+	return
-+}
-+
-+func libc_utimensat_trampoline()
-+//go:linkname libc_utimensat libc_utimensat
-+//go:cgo_import_dynamic libc_utimensat utimensat "/usr/lib/libSystem.B.dylib"
-+
-+// THIS FILE IS GENERATED BY THE COMMAND AT THE TOP; DO NOT EDIT
-+
- func kill(pid int, signum int, posix int) (err error) {
- 	_, _, e1 := syscall(funcPC(libc_kill_trampoline), uintptr(pid), uintptr(signum), uintptr(posix))
- 	if e1 != 0 {
-@@ -374,7 +371,6 @@ func kill(pid int, signum int, posix int) (err error) {
+@@ -374,7 +352,6 @@ func kill(pid int, signum int, posix int) (err error) {
  }
  
  func libc_kill_trampoline()
@@ -699,7 +687,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_kill libc_kill
  //go:cgo_import_dynamic libc_kill kill "/usr/lib/libSystem.B.dylib"
  
-@@ -394,7 +390,6 @@ func Access(path string, mode uint32) (err error) {
+@@ -394,7 +371,6 @@ func Access(path string, mode uint32) (err error) {
  }
  
  func libc_access_trampoline()
@@ -707,7 +695,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_access libc_access
  //go:cgo_import_dynamic libc_access access "/usr/lib/libSystem.B.dylib"
  
-@@ -409,7 +404,6 @@ func Adjtime(delta *Timeval, olddelta *Timeval) (err error) {
+@@ -409,7 +385,6 @@ func Adjtime(delta *Timeval, olddelta *Timeval) (err error) {
  }
  
  func libc_adjtime_trampoline()
@@ -715,7 +703,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_adjtime libc_adjtime
  //go:cgo_import_dynamic libc_adjtime adjtime "/usr/lib/libSystem.B.dylib"
  
-@@ -429,7 +423,6 @@ func Chdir(path string) (err error) {
+@@ -429,7 +404,6 @@ func Chdir(path string) (err error) {
  }
  
  func libc_chdir_trampoline()
@@ -723,7 +711,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_chdir libc_chdir
  //go:cgo_import_dynamic libc_chdir chdir "/usr/lib/libSystem.B.dylib"
  
-@@ -449,7 +442,6 @@ func Chflags(path string, flags int) (err error) {
+@@ -449,7 +423,6 @@ func Chflags(path string, flags int) (err error) {
  }
  
  func libc_chflags_trampoline()
@@ -731,7 +719,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_chflags libc_chflags
  //go:cgo_import_dynamic libc_chflags chflags "/usr/lib/libSystem.B.dylib"
  
-@@ -469,7 +461,6 @@ func Chmod(path string, mode uint32) (err error) {
+@@ -469,7 +442,6 @@ func Chmod(path string, mode uint32) (err error) {
  }
  
  func libc_chmod_trampoline()
@@ -739,7 +727,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_chmod libc_chmod
  //go:cgo_import_dynamic libc_chmod chmod "/usr/lib/libSystem.B.dylib"
  
-@@ -489,7 +480,6 @@ func Chown(path string, uid int, gid int) (err error) {
+@@ -489,7 +461,6 @@ func Chown(path string, uid int, gid int) (err error) {
  }
  
  func libc_chown_trampoline()
@@ -747,7 +735,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_chown libc_chown
  //go:cgo_import_dynamic libc_chown chown "/usr/lib/libSystem.B.dylib"
  
-@@ -509,7 +499,6 @@ func Chroot(path string) (err error) {
+@@ -509,7 +480,6 @@ func Chroot(path string) (err error) {
  }
  
  func libc_chroot_trampoline()
@@ -755,7 +743,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_chroot libc_chroot
  //go:cgo_import_dynamic libc_chroot chroot "/usr/lib/libSystem.B.dylib"
  
-@@ -524,7 +513,6 @@ func Close(fd int) (err error) {
+@@ -524,7 +494,6 @@ func Close(fd int) (err error) {
  }
  
  func libc_close_trampoline()
@@ -763,7 +751,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_close libc_close
  //go:cgo_import_dynamic libc_close close "/usr/lib/libSystem.B.dylib"
  
-@@ -539,7 +527,6 @@ func closedir(dir uintptr) (err error) {
+@@ -539,7 +508,6 @@ func closedir(dir uintptr) (err error) {
  }
  
  func libc_closedir_trampoline()
@@ -771,7 +759,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_closedir libc_closedir
  //go:cgo_import_dynamic libc_closedir closedir "/usr/lib/libSystem.B.dylib"
  
-@@ -555,7 +542,6 @@ func Dup(fd int) (nfd int, err error) {
+@@ -555,7 +523,6 @@ func Dup(fd int) (nfd int, err error) {
  }
  
  func libc_dup_trampoline()
@@ -779,7 +767,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_dup libc_dup
  //go:cgo_import_dynamic libc_dup dup "/usr/lib/libSystem.B.dylib"
  
-@@ -570,7 +556,6 @@ func Dup2(from int, to int) (err error) {
+@@ -570,7 +537,6 @@ func Dup2(from int, to int) (err error) {
  }
  
  func libc_dup2_trampoline()
@@ -787,7 +775,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_dup2 libc_dup2
  //go:cgo_import_dynamic libc_dup2 dup2 "/usr/lib/libSystem.B.dylib"
  
-@@ -595,7 +580,6 @@ func Exchangedata(path1 string, path2 string, options int) (err error) {
+@@ -595,7 +561,6 @@ func Exchangedata(path1 string, path2 string, options int) (err error) {
  }
  
  func libc_exchangedata_trampoline()
@@ -795,7 +783,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_exchangedata libc_exchangedata
  //go:cgo_import_dynamic libc_exchangedata exchangedata "/usr/lib/libSystem.B.dylib"
  
-@@ -610,7 +594,6 @@ func Fchdir(fd int) (err error) {
+@@ -610,7 +575,6 @@ func Fchdir(fd int) (err error) {
  }
  
  func libc_fchdir_trampoline()
@@ -803,7 +791,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fchdir libc_fchdir
  //go:cgo_import_dynamic libc_fchdir fchdir "/usr/lib/libSystem.B.dylib"
  
-@@ -625,7 +608,6 @@ func Fchflags(fd int, flags int) (err error) {
+@@ -625,7 +589,6 @@ func Fchflags(fd int, flags int) (err error) {
  }
  
  func libc_fchflags_trampoline()
@@ -811,7 +799,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fchflags libc_fchflags
  //go:cgo_import_dynamic libc_fchflags fchflags "/usr/lib/libSystem.B.dylib"
  
-@@ -640,7 +622,6 @@ func Fchmod(fd int, mode uint32) (err error) {
+@@ -640,7 +603,6 @@ func Fchmod(fd int, mode uint32) (err error) {
  }
  
  func libc_fchmod_trampoline()
@@ -819,7 +807,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fchmod libc_fchmod
  //go:cgo_import_dynamic libc_fchmod fchmod "/usr/lib/libSystem.B.dylib"
  
-@@ -655,7 +636,6 @@ func Fchown(fd int, uid int, gid int) (err error) {
+@@ -655,7 +617,6 @@ func Fchown(fd int, uid int, gid int) (err error) {
  }
  
  func libc_fchown_trampoline()
@@ -827,7 +815,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fchown libc_fchown
  //go:cgo_import_dynamic libc_fchown fchown "/usr/lib/libSystem.B.dylib"
  
-@@ -670,7 +650,6 @@ func Flock(fd int, how int) (err error) {
+@@ -670,7 +631,6 @@ func Flock(fd int, how int) (err error) {
  }
  
  func libc_flock_trampoline()
@@ -835,7 +823,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_flock libc_flock
  //go:cgo_import_dynamic libc_flock flock "/usr/lib/libSystem.B.dylib"
  
-@@ -686,7 +665,6 @@ func Fpathconf(fd int, name int) (val int, err error) {
+@@ -686,7 +646,6 @@ func Fpathconf(fd int, name int) (val int, err error) {
  }
  
  func libc_fpathconf_trampoline()
@@ -843,7 +831,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fpathconf libc_fpathconf
  //go:cgo_import_dynamic libc_fpathconf fpathconf "/usr/lib/libSystem.B.dylib"
  
-@@ -701,7 +679,6 @@ func Fsync(fd int) (err error) {
+@@ -701,7 +660,6 @@ func Fsync(fd int) (err error) {
  }
  
  func libc_fsync_trampoline()
@@ -851,7 +839,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fsync libc_fsync
  //go:cgo_import_dynamic libc_fsync fsync "/usr/lib/libSystem.B.dylib"
  
-@@ -716,7 +693,6 @@ func Ftruncate(fd int, length int64) (err error) {
+@@ -716,7 +674,6 @@ func Ftruncate(fd int, length int64) (err error) {
  }
  
  func libc_ftruncate_trampoline()
@@ -859,7 +847,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_ftruncate libc_ftruncate
  //go:cgo_import_dynamic libc_ftruncate ftruncate "/usr/lib/libSystem.B.dylib"
  
-@@ -729,7 +705,6 @@ func Getdtablesize() (size int) {
+@@ -729,7 +686,6 @@ func Getdtablesize() (size int) {
  }
  
  func libc_getdtablesize_trampoline()
@@ -867,7 +855,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getdtablesize libc_getdtablesize
  //go:cgo_import_dynamic libc_getdtablesize getdtablesize "/usr/lib/libSystem.B.dylib"
  
-@@ -742,7 +717,6 @@ func Getegid() (egid int) {
+@@ -742,7 +698,6 @@ func Getegid() (egid int) {
  }
  
  func libc_getegid_trampoline()
@@ -875,7 +863,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getegid libc_getegid
  //go:cgo_import_dynamic libc_getegid getegid "/usr/lib/libSystem.B.dylib"
  
-@@ -755,7 +729,6 @@ func Geteuid() (uid int) {
+@@ -755,7 +710,6 @@ func Geteuid() (uid int) {
  }
  
  func libc_geteuid_trampoline()
@@ -883,7 +871,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_geteuid libc_geteuid
  //go:cgo_import_dynamic libc_geteuid geteuid "/usr/lib/libSystem.B.dylib"
  
-@@ -768,7 +741,6 @@ func Getgid() (gid int) {
+@@ -768,7 +722,6 @@ func Getgid() (gid int) {
  }
  
  func libc_getgid_trampoline()
@@ -891,7 +879,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getgid libc_getgid
  //go:cgo_import_dynamic libc_getgid getgid "/usr/lib/libSystem.B.dylib"
  
-@@ -784,7 +756,6 @@ func Getpgid(pid int) (pgid int, err error) {
+@@ -784,7 +737,6 @@ func Getpgid(pid int) (pgid int, err error) {
  }
  
  func libc_getpgid_trampoline()
@@ -899,7 +887,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getpgid libc_getpgid
  //go:cgo_import_dynamic libc_getpgid getpgid "/usr/lib/libSystem.B.dylib"
  
-@@ -797,7 +768,6 @@ func Getpgrp() (pgrp int) {
+@@ -797,7 +749,6 @@ func Getpgrp() (pgrp int) {
  }
  
  func libc_getpgrp_trampoline()
@@ -907,7 +895,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getpgrp libc_getpgrp
  //go:cgo_import_dynamic libc_getpgrp getpgrp "/usr/lib/libSystem.B.dylib"
  
-@@ -810,7 +780,6 @@ func Getpid() (pid int) {
+@@ -810,7 +761,6 @@ func Getpid() (pid int) {
  }
  
  func libc_getpid_trampoline()
@@ -915,7 +903,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getpid libc_getpid
  //go:cgo_import_dynamic libc_getpid getpid "/usr/lib/libSystem.B.dylib"
  
-@@ -823,7 +792,6 @@ func Getppid() (ppid int) {
+@@ -823,7 +773,6 @@ func Getppid() (ppid int) {
  }
  
  func libc_getppid_trampoline()
@@ -923,7 +911,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getppid libc_getppid
  //go:cgo_import_dynamic libc_getppid getppid "/usr/lib/libSystem.B.dylib"
  
-@@ -839,7 +807,6 @@ func Getpriority(which int, who int) (prio int, err error) {
+@@ -839,7 +788,6 @@ func Getpriority(which int, who int) (prio int, err error) {
  }
  
  func libc_getpriority_trampoline()
@@ -931,7 +919,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getpriority libc_getpriority
  //go:cgo_import_dynamic libc_getpriority getpriority "/usr/lib/libSystem.B.dylib"
  
-@@ -854,7 +821,6 @@ func Getrlimit(which int, lim *Rlimit) (err error) {
+@@ -854,7 +802,6 @@ func Getrlimit(which int, lim *Rlimit) (err error) {
  }
  
  func libc_getrlimit_trampoline()
@@ -939,7 +927,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getrlimit libc_getrlimit
  //go:cgo_import_dynamic libc_getrlimit getrlimit "/usr/lib/libSystem.B.dylib"
  
-@@ -869,7 +835,6 @@ func Getrusage(who int, rusage *Rusage) (err error) {
+@@ -869,7 +816,6 @@ func Getrusage(who int, rusage *Rusage) (err error) {
  }
  
  func libc_getrusage_trampoline()
@@ -947,7 +935,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getrusage libc_getrusage
  //go:cgo_import_dynamic libc_getrusage getrusage "/usr/lib/libSystem.B.dylib"
  
-@@ -885,7 +850,6 @@ func Getsid(pid int) (sid int, err error) {
+@@ -885,7 +831,6 @@ func Getsid(pid int) (sid int, err error) {
  }
  
  func libc_getsid_trampoline()
@@ -955,7 +943,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getsid libc_getsid
  //go:cgo_import_dynamic libc_getsid getsid "/usr/lib/libSystem.B.dylib"
  
-@@ -898,7 +862,6 @@ func Getuid() (uid int) {
+@@ -898,7 +843,6 @@ func Getuid() (uid int) {
  }
  
  func libc_getuid_trampoline()
@@ -963,7 +951,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_getuid libc_getuid
  //go:cgo_import_dynamic libc_getuid getuid "/usr/lib/libSystem.B.dylib"
  
-@@ -911,7 +874,6 @@ func Issetugid() (tainted bool) {
+@@ -911,7 +855,6 @@ func Issetugid() (tainted bool) {
  }
  
  func libc_issetugid_trampoline()
@@ -971,7 +959,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_issetugid libc_issetugid
  //go:cgo_import_dynamic libc_issetugid issetugid "/usr/lib/libSystem.B.dylib"
  
-@@ -927,7 +889,6 @@ func Kqueue() (fd int, err error) {
+@@ -927,7 +870,6 @@ func Kqueue() (fd int, err error) {
  }
  
  func libc_kqueue_trampoline()
@@ -979,7 +967,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_kqueue libc_kqueue
  //go:cgo_import_dynamic libc_kqueue kqueue "/usr/lib/libSystem.B.dylib"
  
-@@ -947,7 +908,6 @@ func Lchown(path string, uid int, gid int) (err error) {
+@@ -947,7 +889,6 @@ func Lchown(path string, uid int, gid int) (err error) {
  }
  
  func libc_lchown_trampoline()
@@ -987,7 +975,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_lchown libc_lchown
  //go:cgo_import_dynamic libc_lchown lchown "/usr/lib/libSystem.B.dylib"
  
-@@ -972,7 +932,6 @@ func Link(path string, link string) (err error) {
+@@ -972,7 +913,6 @@ func Link(path string, link string) (err error) {
  }
  
  func libc_link_trampoline()
@@ -995,7 +983,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_link libc_link
  //go:cgo_import_dynamic libc_link link "/usr/lib/libSystem.B.dylib"
  
-@@ -987,7 +946,6 @@ func Listen(s int, backlog int) (err error) {
+@@ -987,7 +927,6 @@ func Listen(s int, backlog int) (err error) {
  }
  
  func libc_listen_trampoline()
@@ -1003,7 +991,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_listen libc_listen
  //go:cgo_import_dynamic libc_listen listen "/usr/lib/libSystem.B.dylib"
  
-@@ -1007,7 +965,6 @@ func Mkdir(path string, mode uint32) (err error) {
+@@ -1007,7 +946,6 @@ func Mkdir(path string, mode uint32) (err error) {
  }
  
  func libc_mkdir_trampoline()
@@ -1011,7 +999,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mkdir libc_mkdir
  //go:cgo_import_dynamic libc_mkdir mkdir "/usr/lib/libSystem.B.dylib"
  
-@@ -1027,7 +984,6 @@ func Mkfifo(path string, mode uint32) (err error) {
+@@ -1027,7 +965,6 @@ func Mkfifo(path string, mode uint32) (err error) {
  }
  
  func libc_mkfifo_trampoline()
@@ -1019,7 +1007,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mkfifo libc_mkfifo
  //go:cgo_import_dynamic libc_mkfifo mkfifo "/usr/lib/libSystem.B.dylib"
  
-@@ -1047,7 +1003,6 @@ func Mknod(path string, mode uint32, dev int) (err error) {
+@@ -1047,7 +984,6 @@ func Mknod(path string, mode uint32, dev int) (err error) {
  }
  
  func libc_mknod_trampoline()
@@ -1027,7 +1015,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mknod libc_mknod
  //go:cgo_import_dynamic libc_mknod mknod "/usr/lib/libSystem.B.dylib"
  
-@@ -1068,7 +1023,6 @@ func Mlock(b []byte) (err error) {
+@@ -1068,7 +1004,6 @@ func Mlock(b []byte) (err error) {
  }
  
  func libc_mlock_trampoline()
@@ -1035,7 +1023,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mlock libc_mlock
  //go:cgo_import_dynamic libc_mlock mlock "/usr/lib/libSystem.B.dylib"
  
-@@ -1083,7 +1037,6 @@ func Mlockall(flags int) (err error) {
+@@ -1083,7 +1018,6 @@ func Mlockall(flags int) (err error) {
  }
  
  func libc_mlockall_trampoline()
@@ -1043,7 +1031,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mlockall libc_mlockall
  //go:cgo_import_dynamic libc_mlockall mlockall "/usr/lib/libSystem.B.dylib"
  
-@@ -1104,7 +1057,6 @@ func Mprotect(b []byte, prot int) (err error) {
+@@ -1104,7 +1038,6 @@ func Mprotect(b []byte, prot int) (err error) {
  }
  
  func libc_mprotect_trampoline()
@@ -1051,7 +1039,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mprotect libc_mprotect
  //go:cgo_import_dynamic libc_mprotect mprotect "/usr/lib/libSystem.B.dylib"
  
-@@ -1125,7 +1077,6 @@ func Munlock(b []byte) (err error) {
+@@ -1125,7 +1058,6 @@ func Munlock(b []byte) (err error) {
  }
  
  func libc_munlock_trampoline()
@@ -1059,7 +1047,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_munlock libc_munlock
  //go:cgo_import_dynamic libc_munlock munlock "/usr/lib/libSystem.B.dylib"
  
-@@ -1140,7 +1091,6 @@ func Munlockall() (err error) {
+@@ -1140,7 +1072,6 @@ func Munlockall() (err error) {
  }
  
  func libc_munlockall_trampoline()
@@ -1067,7 +1055,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_munlockall libc_munlockall
  //go:cgo_import_dynamic libc_munlockall munlockall "/usr/lib/libSystem.B.dylib"
  
-@@ -1161,7 +1111,6 @@ func Open(path string, mode int, perm uint32) (fd int, err error) {
+@@ -1161,7 +1092,6 @@ func Open(path string, mode int, perm uint32) (fd int, err error) {
  }
  
  func libc_open_trampoline()
@@ -1075,7 +1063,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_open libc_open
  //go:cgo_import_dynamic libc_open open "/usr/lib/libSystem.B.dylib"
  
-@@ -1182,7 +1131,6 @@ func Pathconf(path string, name int) (val int, err error) {
+@@ -1182,7 +1112,6 @@ func Pathconf(path string, name int) (val int, err error) {
  }
  
  func libc_pathconf_trampoline()
@@ -1083,7 +1071,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_pathconf libc_pathconf
  //go:cgo_import_dynamic libc_pathconf pathconf "/usr/lib/libSystem.B.dylib"
  
-@@ -1204,7 +1152,6 @@ func Pread(fd int, p []byte, offset int64) (n int, err error) {
+@@ -1204,7 +1133,6 @@ func Pread(fd int, p []byte, offset int64) (n int, err error) {
  }
  
  func libc_pread_trampoline()
@@ -1091,7 +1079,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_pread libc_pread
  //go:cgo_import_dynamic libc_pread pread "/usr/lib/libSystem.B.dylib"
  
-@@ -1226,7 +1173,6 @@ func Pwrite(fd int, p []byte, offset int64) (n int, err error) {
+@@ -1226,7 +1154,6 @@ func Pwrite(fd int, p []byte, offset int64) (n int, err error) {
  }
  
  func libc_pwrite_trampoline()
@@ -1099,7 +1087,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_pwrite libc_pwrite
  //go:cgo_import_dynamic libc_pwrite pwrite "/usr/lib/libSystem.B.dylib"
  
-@@ -1248,7 +1194,6 @@ func read(fd int, p []byte) (n int, err error) {
+@@ -1248,7 +1175,6 @@ func read(fd int, p []byte) (n int, err error) {
  }
  
  func libc_read_trampoline()
@@ -1107,7 +1095,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_read libc_read
  //go:cgo_import_dynamic libc_read read "/usr/lib/libSystem.B.dylib"
  
-@@ -1261,7 +1206,6 @@ func readdir_r(dir uintptr, entry *Dirent, result **Dirent) (res Errno) {
+@@ -1261,7 +1187,6 @@ func readdir_r(dir uintptr, entry *Dirent, result **Dirent) (res Errno) {
  }
  
  func libc_readdir_r_trampoline()
@@ -1115,7 +1103,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_readdir_r libc_readdir_r
  //go:cgo_import_dynamic libc_readdir_r readdir_r "/usr/lib/libSystem.B.dylib"
  
-@@ -1288,7 +1232,6 @@ func Readlink(path string, buf []byte) (n int, err error) {
+@@ -1288,7 +1213,6 @@ func Readlink(path string, buf []byte) (n int, err error) {
  }
  
  func libc_readlink_trampoline()
@@ -1123,7 +1111,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_readlink libc_readlink
  //go:cgo_import_dynamic libc_readlink readlink "/usr/lib/libSystem.B.dylib"
  
-@@ -1313,7 +1256,6 @@ func Rename(from string, to string) (err error) {
+@@ -1313,7 +1237,6 @@ func Rename(from string, to string) (err error) {
  }
  
  func libc_rename_trampoline()
@@ -1131,7 +1119,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_rename libc_rename
  //go:cgo_import_dynamic libc_rename rename "/usr/lib/libSystem.B.dylib"
  
-@@ -1333,7 +1275,6 @@ func Revoke(path string) (err error) {
+@@ -1333,7 +1256,6 @@ func Revoke(path string) (err error) {
  }
  
  func libc_revoke_trampoline()
@@ -1139,7 +1127,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_revoke libc_revoke
  //go:cgo_import_dynamic libc_revoke revoke "/usr/lib/libSystem.B.dylib"
  
-@@ -1353,7 +1294,6 @@ func Rmdir(path string) (err error) {
+@@ -1353,7 +1275,6 @@ func Rmdir(path string) (err error) {
  }
  
  func libc_rmdir_trampoline()
@@ -1147,7 +1135,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_rmdir libc_rmdir
  //go:cgo_import_dynamic libc_rmdir rmdir "/usr/lib/libSystem.B.dylib"
  
-@@ -1369,7 +1309,6 @@ func Seek(fd int, offset int64, whence int) (newoffset int64, err error) {
+@@ -1369,7 +1290,6 @@ func Seek(fd int, offset int64, whence int) (newoffset int64, err error) {
  }
  
  func libc_lseek_trampoline()
@@ -1155,7 +1143,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_lseek libc_lseek
  //go:cgo_import_dynamic libc_lseek lseek "/usr/lib/libSystem.B.dylib"
  
-@@ -1384,7 +1323,6 @@ func Select(n int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (err error) {
+@@ -1384,7 +1304,6 @@ func Select(n int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (err error) {
  }
  
  func libc_select_trampoline()
@@ -1163,7 +1151,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_select libc_select
  //go:cgo_import_dynamic libc_select select "/usr/lib/libSystem.B.dylib"
  
-@@ -1399,7 +1337,6 @@ func Setegid(egid int) (err error) {
+@@ -1399,7 +1318,6 @@ func Setegid(egid int) (err error) {
  }
  
  func libc_setegid_trampoline()
@@ -1171,7 +1159,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setegid libc_setegid
  //go:cgo_import_dynamic libc_setegid setegid "/usr/lib/libSystem.B.dylib"
  
-@@ -1414,7 +1351,6 @@ func Seteuid(euid int) (err error) {
+@@ -1414,7 +1332,6 @@ func Seteuid(euid int) (err error) {
  }
  
  func libc_seteuid_trampoline()
@@ -1179,7 +1167,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_seteuid libc_seteuid
  //go:cgo_import_dynamic libc_seteuid seteuid "/usr/lib/libSystem.B.dylib"
  
-@@ -1429,7 +1365,6 @@ func Setgid(gid int) (err error) {
+@@ -1429,7 +1346,6 @@ func Setgid(gid int) (err error) {
  }
  
  func libc_setgid_trampoline()
@@ -1187,7 +1175,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setgid libc_setgid
  //go:cgo_import_dynamic libc_setgid setgid "/usr/lib/libSystem.B.dylib"
  
-@@ -1449,7 +1384,6 @@ func Setlogin(name string) (err error) {
+@@ -1449,7 +1365,6 @@ func Setlogin(name string) (err error) {
  }
  
  func libc_setlogin_trampoline()
@@ -1195,7 +1183,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setlogin libc_setlogin
  //go:cgo_import_dynamic libc_setlogin setlogin "/usr/lib/libSystem.B.dylib"
  
-@@ -1464,7 +1398,6 @@ func Setpgid(pid int, pgid int) (err error) {
+@@ -1464,7 +1379,6 @@ func Setpgid(pid int, pgid int) (err error) {
  }
  
  func libc_setpgid_trampoline()
@@ -1203,7 +1191,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setpgid libc_setpgid
  //go:cgo_import_dynamic libc_setpgid setpgid "/usr/lib/libSystem.B.dylib"
  
-@@ -1479,7 +1412,6 @@ func Setpriority(which int, who int, prio int) (err error) {
+@@ -1479,7 +1393,6 @@ func Setpriority(which int, who int, prio int) (err error) {
  }
  
  func libc_setpriority_trampoline()
@@ -1211,7 +1199,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setpriority libc_setpriority
  //go:cgo_import_dynamic libc_setpriority setpriority "/usr/lib/libSystem.B.dylib"
  
-@@ -1494,7 +1426,6 @@ func Setprivexec(flag int) (err error) {
+@@ -1494,7 +1407,6 @@ func Setprivexec(flag int) (err error) {
  }
  
  func libc_setprivexec_trampoline()
@@ -1219,7 +1207,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setprivexec libc_setprivexec
  //go:cgo_import_dynamic libc_setprivexec setprivexec "/usr/lib/libSystem.B.dylib"
  
-@@ -1509,7 +1440,6 @@ func Setregid(rgid int, egid int) (err error) {
+@@ -1509,7 +1421,6 @@ func Setregid(rgid int, egid int) (err error) {
  }
  
  func libc_setregid_trampoline()
@@ -1227,7 +1215,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setregid libc_setregid
  //go:cgo_import_dynamic libc_setregid setregid "/usr/lib/libSystem.B.dylib"
  
-@@ -1524,7 +1454,6 @@ func Setreuid(ruid int, euid int) (err error) {
+@@ -1524,7 +1435,6 @@ func Setreuid(ruid int, euid int) (err error) {
  }
  
  func libc_setreuid_trampoline()
@@ -1235,7 +1223,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setreuid libc_setreuid
  //go:cgo_import_dynamic libc_setreuid setreuid "/usr/lib/libSystem.B.dylib"
  
-@@ -1539,7 +1468,6 @@ func Setrlimit(which int, lim *Rlimit) (err error) {
+@@ -1539,7 +1449,6 @@ func Setrlimit(which int, lim *Rlimit) (err error) {
  }
  
  func libc_setrlimit_trampoline()
@@ -1243,7 +1231,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setrlimit libc_setrlimit
  //go:cgo_import_dynamic libc_setrlimit setrlimit "/usr/lib/libSystem.B.dylib"
  
-@@ -1555,7 +1483,6 @@ func Setsid() (pid int, err error) {
+@@ -1555,7 +1464,6 @@ func Setsid() (pid int, err error) {
  }
  
  func libc_setsid_trampoline()
@@ -1251,7 +1239,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setsid libc_setsid
  //go:cgo_import_dynamic libc_setsid setsid "/usr/lib/libSystem.B.dylib"
  
-@@ -1570,7 +1497,6 @@ func Settimeofday(tp *Timeval) (err error) {
+@@ -1570,7 +1478,6 @@ func Settimeofday(tp *Timeval) (err error) {
  }
  
  func libc_settimeofday_trampoline()
@@ -1259,7 +1247,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_settimeofday libc_settimeofday
  //go:cgo_import_dynamic libc_settimeofday settimeofday "/usr/lib/libSystem.B.dylib"
  
-@@ -1585,7 +1511,6 @@ func Setuid(uid int) (err error) {
+@@ -1585,7 +1492,6 @@ func Setuid(uid int) (err error) {
  }
  
  func libc_setuid_trampoline()
@@ -1267,7 +1255,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_setuid libc_setuid
  //go:cgo_import_dynamic libc_setuid setuid "/usr/lib/libSystem.B.dylib"
  
-@@ -1610,7 +1535,6 @@ func Symlink(path string, link string) (err error) {
+@@ -1610,7 +1516,6 @@ func Symlink(path string, link string) (err error) {
  }
  
  func libc_symlink_trampoline()
@@ -1275,7 +1263,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_symlink libc_symlink
  //go:cgo_import_dynamic libc_symlink symlink "/usr/lib/libSystem.B.dylib"
  
-@@ -1625,7 +1549,6 @@ func Sync() (err error) {
+@@ -1625,7 +1530,6 @@ func Sync() (err error) {
  }
  
  func libc_sync_trampoline()
@@ -1283,7 +1271,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_sync libc_sync
  //go:cgo_import_dynamic libc_sync sync "/usr/lib/libSystem.B.dylib"
  
-@@ -1645,7 +1568,6 @@ func Truncate(path string, length int64) (err error) {
+@@ -1645,7 +1549,6 @@ func Truncate(path string, length int64) (err error) {
  }
  
  func libc_truncate_trampoline()
@@ -1291,7 +1279,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_truncate libc_truncate
  //go:cgo_import_dynamic libc_truncate truncate "/usr/lib/libSystem.B.dylib"
  
-@@ -1658,7 +1580,6 @@ func Umask(newmask int) (oldmask int) {
+@@ -1658,7 +1561,6 @@ func Umask(newmask int) (oldmask int) {
  }
  
  func libc_umask_trampoline()
@@ -1299,7 +1287,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_umask libc_umask
  //go:cgo_import_dynamic libc_umask umask "/usr/lib/libSystem.B.dylib"
  
-@@ -1678,7 +1599,6 @@ func Undelete(path string) (err error) {
+@@ -1678,7 +1580,6 @@ func Undelete(path string) (err error) {
  }
  
  func libc_undelete_trampoline()
@@ -1307,7 +1295,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_undelete libc_undelete
  //go:cgo_import_dynamic libc_undelete undelete "/usr/lib/libSystem.B.dylib"
  
-@@ -1698,7 +1618,6 @@ func Unlink(path string) (err error) {
+@@ -1698,7 +1599,6 @@ func Unlink(path string) (err error) {
  }
  
  func libc_unlink_trampoline()
@@ -1315,7 +1303,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_unlink libc_unlink
  //go:cgo_import_dynamic libc_unlink unlink "/usr/lib/libSystem.B.dylib"
  
-@@ -1718,7 +1637,6 @@ func Unmount(path string, flags int) (err error) {
+@@ -1718,7 +1618,6 @@ func Unmount(path string, flags int) (err error) {
  }
  
  func libc_unmount_trampoline()
@@ -1323,7 +1311,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_unmount libc_unmount
  //go:cgo_import_dynamic libc_unmount unmount "/usr/lib/libSystem.B.dylib"
  
-@@ -1740,7 +1658,6 @@ func write(fd int, p []byte) (n int, err error) {
+@@ -1740,7 +1639,6 @@ func write(fd int, p []byte) (n int, err error) {
  }
  
  func libc_write_trampoline()
@@ -1331,7 +1319,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_write libc_write
  //go:cgo_import_dynamic libc_write write "/usr/lib/libSystem.B.dylib"
  
-@@ -1762,7 +1679,6 @@ func writev(fd int, iovecs []Iovec) (cnt uintptr, err error) {
+@@ -1762,7 +1660,6 @@ func writev(fd int, iovecs []Iovec) (cnt uintptr, err error) {
  }
  
  func libc_writev_trampoline()
@@ -1339,7 +1327,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_writev libc_writev
  //go:cgo_import_dynamic libc_writev writev "/usr/lib/libSystem.B.dylib"
  
-@@ -1778,7 +1694,6 @@ func mmap(addr uintptr, length uintptr, prot int, flag int, fd int, pos int64) (
+@@ -1778,7 +1675,6 @@ func mmap(addr uintptr, length uintptr, prot int, flag int, fd int, pos int64) (
  }
  
  func libc_mmap_trampoline()
@@ -1347,7 +1335,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_mmap libc_mmap
  //go:cgo_import_dynamic libc_mmap mmap "/usr/lib/libSystem.B.dylib"
  
-@@ -1793,7 +1708,6 @@ func munmap(addr uintptr, length uintptr) (err error) {
+@@ -1793,7 +1689,6 @@ func munmap(addr uintptr, length uintptr) (err error) {
  }
  
  func libc_munmap_trampoline()
@@ -1355,7 +1343,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_munmap libc_munmap
  //go:cgo_import_dynamic libc_munmap munmap "/usr/lib/libSystem.B.dylib"
  
-@@ -1809,7 +1723,6 @@ func fork() (pid int, err error) {
+@@ -1809,7 +1704,6 @@ func fork() (pid int, err error) {
  }
  
  func libc_fork_trampoline()
@@ -1363,7 +1351,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fork libc_fork
  //go:cgo_import_dynamic libc_fork fork "/usr/lib/libSystem.B.dylib"
  
-@@ -1824,7 +1737,6 @@ func ioctl(fd int, req int, arg int) (err error) {
+@@ -1824,7 +1718,6 @@ func ioctl(fd int, req int, arg int) (err error) {
  }
  
  func libc_ioctl_trampoline()
@@ -1371,7 +1359,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_ioctl libc_ioctl
  //go:cgo_import_dynamic libc_ioctl ioctl "/usr/lib/libSystem.B.dylib"
  
-@@ -1849,7 +1761,6 @@ func execve(path *byte, argv **byte, envp **byte) (err error) {
+@@ -1849,7 +1742,6 @@ func execve(path *byte, argv **byte, envp **byte) (err error) {
  }
  
  func libc_execve_trampoline()
@@ -1379,7 +1367,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_execve libc_execve
  //go:cgo_import_dynamic libc_execve execve "/usr/lib/libSystem.B.dylib"
  
-@@ -1864,7 +1775,6 @@ func exit(res int) (err error) {
+@@ -1864,7 +1756,6 @@ func exit(res int) (err error) {
  }
  
  func libc_exit_trampoline()
@@ -1387,7 +1375,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_exit libc_exit
  //go:cgo_import_dynamic libc_exit exit "/usr/lib/libSystem.B.dylib"
  
-@@ -1885,7 +1795,6 @@ func sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr)
+@@ -1885,7 +1776,6 @@ func sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr)
  }
  
  func libc_sysctl_trampoline()
@@ -1395,7 +1383,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_sysctl libc_sysctl
  //go:cgo_import_dynamic libc_sysctl sysctl "/usr/lib/libSystem.B.dylib"
  
-@@ -1916,7 +1825,6 @@ func unlinkat(fd int, path string, flags int) (err error) {
+@@ -1916,7 +1806,6 @@ func unlinkat(fd int, path string, flags int) (err error) {
  }
  
  func libc_unlinkat_trampoline()
@@ -1403,7 +1391,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_unlinkat libc_unlinkat
  //go:cgo_import_dynamic libc_unlinkat unlinkat "/usr/lib/libSystem.B.dylib"
  
-@@ -1937,7 +1845,6 @@ func openat(fd int, path string, flags int, perm uint32) (fdret int, err error)
+@@ -1937,7 +1826,6 @@ func openat(fd int, path string, flags int, perm uint32) (fdret int, err error)
  }
  
  func libc_openat_trampoline()
@@ -1411,7 +1399,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_openat libc_openat
  //go:cgo_import_dynamic libc_openat openat "/usr/lib/libSystem.B.dylib"
  
-@@ -1959,12 +1866,25 @@ func getcwd(buf []byte) (n int, err error) {
+@@ -1959,12 +1847,25 @@ func getcwd(buf []byte) (n int, err error) {
  }
  
  func libc_getcwd_trampoline()
@@ -1438,7 +1426,7 @@ index 093739ebc7..cadf5445ee 100644
  func Fstat(fd int, stat *Stat_t) (err error) {
  	_, _, e1 := syscall(funcPC(libc_fstat64_trampoline), uintptr(fd), uintptr(unsafe.Pointer(stat)), 0)
  	if e1 != 0 {
-@@ -1974,7 +1894,6 @@ func Fstat(fd int, stat *Stat_t) (err error) {
+@@ -1974,7 +1875,6 @@ func Fstat(fd int, stat *Stat_t) (err error) {
  }
  
  func libc_fstat64_trampoline()
@@ -1446,7 +1434,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fstat64 libc_fstat64
  //go:cgo_import_dynamic libc_fstat64 fstat64 "/usr/lib/libSystem.B.dylib"
  
-@@ -1989,7 +1908,6 @@ func Fstatfs(fd int, stat *Statfs_t) (err error) {
+@@ -1989,7 +1889,6 @@ func Fstatfs(fd int, stat *Statfs_t) (err error) {
  }
  
  func libc_fstatfs64_trampoline()
@@ -1454,7 +1442,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fstatfs64 libc_fstatfs64
  //go:cgo_import_dynamic libc_fstatfs64 fstatfs64 "/usr/lib/libSystem.B.dylib"
  
-@@ -2004,7 +1922,6 @@ func Gettimeofday(tp *Timeval) (err error) {
+@@ -2004,7 +1903,6 @@ func Gettimeofday(tp *Timeval) (err error) {
  }
  
  func libc_gettimeofday_trampoline()
@@ -1462,7 +1450,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_gettimeofday libc_gettimeofday
  //go:cgo_import_dynamic libc_gettimeofday gettimeofday "/usr/lib/libSystem.B.dylib"
  
-@@ -2024,7 +1941,6 @@ func Lstat(path string, stat *Stat_t) (err error) {
+@@ -2024,7 +1922,6 @@ func Lstat(path string, stat *Stat_t) (err error) {
  }
  
  func libc_lstat64_trampoline()
@@ -1470,7 +1458,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_lstat64 libc_lstat64
  //go:cgo_import_dynamic libc_lstat64 lstat64 "/usr/lib/libSystem.B.dylib"
  
-@@ -2044,7 +1960,6 @@ func Stat(path string, stat *Stat_t) (err error) {
+@@ -2044,7 +1941,6 @@ func Stat(path string, stat *Stat_t) (err error) {
  }
  
  func libc_stat64_trampoline()
@@ -1478,7 +1466,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_stat64 libc_stat64
  //go:cgo_import_dynamic libc_stat64 stat64 "/usr/lib/libSystem.B.dylib"
  
-@@ -2064,7 +1979,6 @@ func Statfs(path string, stat *Statfs_t) (err error) {
+@@ -2064,7 +1960,6 @@ func Statfs(path string, stat *Statfs_t) (err error) {
  }
  
  func libc_statfs64_trampoline()
@@ -1486,7 +1474,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_statfs64 libc_statfs64
  //go:cgo_import_dynamic libc_statfs64 statfs64 "/usr/lib/libSystem.B.dylib"
  
-@@ -2084,7 +1998,6 @@ func fstatat(fd int, path string, stat *Stat_t, flags int) (err error) {
+@@ -2084,7 +1979,6 @@ func fstatat(fd int, path string, stat *Stat_t, flags int) (err error) {
  }
  
  func libc_fstatat64_trampoline()
@@ -1494,7 +1482,7 @@ index 093739ebc7..cadf5445ee 100644
  //go:linkname libc_fstatat64 libc_fstatat64
  //go:cgo_import_dynamic libc_fstatat64 fstatat64 "/usr/lib/libSystem.B.dylib"
  
-@@ -2100,6 +2013,5 @@ func ptrace(request int, pid int, addr uintptr, data uintptr) (err error) {
+@@ -2100,6 +1994,5 @@ func ptrace(request int, pid int, addr uintptr, data uintptr) (err error) {
  }
  
  func libc_ptrace_trampoline()
