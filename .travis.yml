@@ -10,7 +10,7 @@ os:
 jobs:
   include:
     - os: linux
-     dist: bionic
+      dist: bionic
     - os: linux
       dist: xenial
     - os: osx # MacOS 10.15.5, Darwin 19.6.0
