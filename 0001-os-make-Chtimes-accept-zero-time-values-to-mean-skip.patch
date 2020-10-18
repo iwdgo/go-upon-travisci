@@ -1,4 +1,4 @@
-From c8975f108bc750379ed4f4401fe4bc9d1a4c65f5 Mon Sep 17 00:00:00 2001
+From effc341817b14f3ec0c5c4a6c402076fda80cc8e Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 11 Oct 2020 12:02:23 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,14 +28,14 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 115 +++++++++++++
+ src/os/os_test.go                             | 116 +++++++++++++
  src/syscall/fs_js.go                          |  14 ++
  src/syscall/syscall_bsd.go                    |   6 +-
  src/syscall/syscall_darwin.go                 |  15 +-
  src/syscall/syscall_windows.go                |  20 ++-
  src/syscall/zsyscall_darwin_amd64.go          | 154 ++++--------------
  src/syscall/zsyscall_darwin_amd64.s           |   4 +
- 20 files changed, 245 insertions(+), 134 deletions(-)
+ 20 files changed, 246 insertions(+), 134 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,10 +225,18 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..8cd7825f92 100644
+index 865dfcc0de..e206dcd327 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -19,6 +19,7 @@ import (
+@@ -9,6 +9,7 @@ import (
+ 	"errors"
+ 	"flag"
+ 	"fmt"
++	"golang.org/x/sys/unix"
+ 	"internal/testenv"
+ 	"io"
+ 	"io/ioutil"
+@@ -19,6 +20,7 @@ import (
  	"runtime"
  	"runtime/debug"
  	"sort"
@@ -236,7 +244,7 @@ index 865dfcc0de..8cd7825f92 100644
  	"strings"
  	"sync"
  	"syscall"
-@@ -1251,6 +1252,120 @@ func testChtimes(t *testing.T, name string) {
+@@ -1251,6 +1253,120 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -256,8 +264,8 @@ index 865dfcc0de..8cd7825f92 100644
 +			// kernel > 17 supports separate UTIME_OMIT
 +			// kernel = 17 supports both UTIME_OMIT
 +			// kernel < 17 does not support utimensat
-+			var uname syscall.Utsname
-+			if err := syscall.Uname(&uname); err != nil {
++			var uname unix.Utsname
++			if err := unix.Uname(&uname); err != nil {
 +				t.Logf("Uname: %v", err)
 +				// Uname failed but kernel might be adequate
 +			}
