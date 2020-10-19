@@ -32,7 +32,7 @@ install:
 
 before_script:
   - echo "syscall values"
-  - gcc -include sys/syscall.h -E
+  - gcc -E sys/syscall.h
   - echo "Cloning"
   - mkdir golang
   - cd golang
