@@ -1,4 +1,4 @@
-From 6cc6b0a2ce43a8e6ecd184ab431341d8d1936369 Mon Sep 17 00:00:00 2001
+From 469fd22760f1643d4075c5be4d3d31ef91ae5bac Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,11 +28,11 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 105 ++++++++++++++----
+ src/os/os_test.go                             | 104 ++++++++++++++----
  src/syscall/fs_js.go                          |  14 +++
  src/syscall/syscall_bsd.go                    |   6 +-
  src/syscall/syscall_windows.go                |  20 +++-
- 17 files changed, 165 insertions(+), 31 deletions(-)
+ 17 files changed, 164 insertions(+), 31 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -222,18 +222,10 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..4bd83fa227 100644
+index 865dfcc0de..a5db73a2cd 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -19,6 +19,7 @@ import (
- 	"runtime"
- 	"runtime/debug"
- 	"sort"
-+	"strconv"
- 	"strings"
- 	"sync"
- 	"syscall"
-@@ -1251,38 +1252,98 @@ func testChtimes(t *testing.T, name string) {
+@@ -1251,38 +1251,98 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
