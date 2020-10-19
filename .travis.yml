@@ -32,7 +32,9 @@ install:
 
 before_script:
   - echo "syscall values"
-  - gcc -include sys/syscall.h -E -
+  - echo SYS_BSDTHREAD_TERMINATE | gcc -E -
+  - echo SYS_UTIMENSAT | gcc -E -
+  - echo SYS_UTIMENSAT | gcc -include sys/syscall.h -E -
   - echo "Cloning"
   - mkdir golang
   - cd golang
