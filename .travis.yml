@@ -22,7 +22,7 @@ jobs:
     - os: osx # MacOS 10.12, Darwin 16.7.0, build fails on _utimensat
       osx_image: xcode9.2
 
-go: 1.11.x
+go: 1.12.x
 
 env:
   - GO111MODULE=off
@@ -33,6 +33,10 @@ install:
 before_script:
   - echo "syscall values"
   - echo SYS_BSDTHREAD_TERMINATE | gcc -E -
+  - echo SYS_READ | gcc -E -
+  - echo SYS_READ | gcc -include sys/syscall.h -E -
+  - echo SYS_WRITE | gcc -E -
+  - echo SYS_WRITE | gcc -include sys/syscall.h -E -
   - echo SYS_UTIMENSAT | gcc -E -
   - echo SYS_UTIMENSAT | gcc -include sys/syscall.h -E -
   - echo "Cloning"
