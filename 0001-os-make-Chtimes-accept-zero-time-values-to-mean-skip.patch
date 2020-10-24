@@ -1,4 +1,4 @@
-From 7cba61115a97cb0e096a8981806d18b72e10b26a Mon Sep 17 00:00:00 2001
+From 5e275b493fb20f1d0bb3063369ead835a20f0168 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -143,7 +143,7 @@ index c2d48b9914..fd389477ec 100644
 +
 +const UTIME_OMIT = -0x1
 diff --git a/src/os/file_plan9.go b/src/os/file_plan9.go
-index a1a51a1c06..39f8b76779 100644
+index bbc732838a..0ae6d54ab1 100644
 --- a/src/os/file_plan9.go
 +++ b/src/os/file_plan9.go
 @@ -407,6 +407,7 @@ func chmod(name string, mode FileMode) error {
@@ -168,7 +168,7 @@ index a1a51a1c06..39f8b76779 100644
  	var buf [syscall.STATFIXLEN]byte
  	n, err := d.Marshal(buf[:])
 diff --git a/src/os/file_posix.go b/src/os/file_posix.go
-index ae23d22d0a..42773c1b96 100644
+index 795c547856..13f6313792 100644
 --- a/src/os/file_posix.go
 +++ b/src/os/file_posix.go
 @@ -173,14 +173,22 @@ func (f *File) Sync() error {
@@ -194,13 +194,13 @@ index ae23d22d0a..42773c1b96 100644
 +	set(0, atime)
 +	set(1, mtime)
  	if e := syscall.UtimesNano(fixLongPath(name), utimes[0:]); e != nil {
- 		return &PathError{"chtimes", name, e}
+ 		return &PathError{Op: "chtimes", Path: name, Err: e}
  	}
 diff --git a/src/os/file_unix.go b/src/os/file_unix.go
-index e0f16d809d..6db2c9e254 100644
+index 0dc7a5a0a2..bb893c103e 100644
 --- a/src/os/file_unix.go
 +++ b/src/os/file_unix.go
-@@ -14,6 +14,8 @@ import (
+@@ -13,6 +13,8 @@ import (
  	"syscall"
  )
  
@@ -210,7 +210,7 @@ index e0f16d809d..6db2c9e254 100644
  func fixLongPath(path string) string {
  	return path
 diff --git a/src/os/file_windows.go b/src/os/file_windows.go
-index f744a35023..e996fba600 100644
+index dfc5fc6ce6..e8c3e0eb51 100644
 --- a/src/os/file_windows.go
 +++ b/src/os/file_windows.go
 @@ -14,6 +14,8 @@ import (
@@ -223,10 +223,10 @@ index f744a35023..e996fba600 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 865dfcc0de..8960d9c293 100644
+index 378ddf58dd..ad636d79ff 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1251,38 +1251,92 @@ func testChtimes(t *testing.T, name string) {
+@@ -1344,38 +1344,92 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -388,14 +388,14 @@ index 1c7ec588bc..bfe70b2ef5 100644
  	if err != ENOSYS {
  		return err
 diff --git a/src/syscall/syscall_darwin.go b/src/syscall/syscall_darwin.go
-index afdadbf894..7d6b4748cc 100644
+index afdadbf894..20020a1352 100644
 --- a/src/syscall/syscall_darwin.go
 +++ b/src/syscall/syscall_darwin.go
 @@ -119,6 +119,8 @@ func libc_getfsstat_trampoline()
  //go:cgo_import_dynamic libc_getfsstat getfsstat "/usr/lib/libSystem.B.dylib"
  
  func setattrlistTimes(path string, times []Timespec) error {
-+	// UTIME_OMIT value must match internal/syscall/unix/at_js.go
++	// UTIME_OMIT value must match internal/syscall/unix/at_darwin.go
 +	const UTIME_OMIT = -0x2
  	_p0, err := BytePtrFromString(path)
  	if err != nil {
@@ -425,7 +425,7 @@ index afdadbf894..7d6b4748cc 100644
  	_, _, e1 := syscall6(
  		funcPC(libc_setattrlist_trampoline),
 diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
-index f62c00d72f..875999b164 100644
+index 40c43de84c..96f3194e09 100644
 --- a/src/syscall/syscall_windows.go
 +++ b/src/syscall/syscall_windows.go
 @@ -587,8 +587,14 @@ func Utimes(path string, tv []Timeval) (err error) {
