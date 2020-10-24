@@ -3,16 +3,16 @@ language: go
 arch: amd64
 
 os:
-  # - windows
-  # - linux
+  - windows
+  - linux
   - osx
 
 jobs:
   include:
-    # - os: linux
-    #  dist: bionic
-    # - os: linux
-    #  dist: xenial
+    - os: linux
+      dist: bionic
+    - os: linux
+      dist: xenial
     - os: osx # MacOS 10.15.5, Darwin 19.6.0
       osx_image: xcode12.2
     - os: osx # MacOS 10.14.6, Darwin 18.7.0
@@ -31,15 +31,6 @@ install:
   - echo ""
 
 before_script:
-  - echo "syscall values"
-  - printf SYS_BSDTHREAD_TERMINATE | gcc -E -
-  - printf SYS_READ | gcc -E -
-  - printf SYS_READ | gcc -include sys/syscall.h -E -
-  - printf SYS_WRITE | gcc -E -
-  - printf SYS_WRITE | gcc -include sys/syscall.h -E -
-  - printf SYS_UTIMENSAT | gcc -E -
-  - printf SYS_UTIMENSAT | gcc -include sys/syscall.h -E -
-  - ausyscall --dump
   - echo "Cloning"
   - mkdir golang
   - cd golang
