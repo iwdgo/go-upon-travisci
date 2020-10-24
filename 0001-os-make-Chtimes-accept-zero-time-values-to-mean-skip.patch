@@ -1,4 +1,4 @@
-From 5e275b493fb20f1d0bb3063369ead835a20f0168 Mon Sep 17 00:00:00 2001
+From 256b9a2dc59253b7c8465910d36911baac946160 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -388,7 +388,7 @@ index 1c7ec588bc..bfe70b2ef5 100644
  	if err != ENOSYS {
  		return err
 diff --git a/src/syscall/syscall_darwin.go b/src/syscall/syscall_darwin.go
-index afdadbf894..20020a1352 100644
+index afdadbf894..31d4fed154 100644
 --- a/src/syscall/syscall_darwin.go
 +++ b/src/syscall/syscall_darwin.go
 @@ -119,6 +119,8 @@ func libc_getfsstat_trampoline()
@@ -406,15 +406,15 @@ index afdadbf894..20020a1352 100644
  
 +	atime := times[0]
 +	mtime := times[1]
-+	if atime == UTIME_OMIT || mtime == UTIME_OMIT {
++	if atime.Sec == UTIME_OMIT || mtime.Sec == UTIME_OMIT {
 +		var st Stat_t
 +		if err := Stat(path, &st); err != nil {
 +			return err
 +		}
-+		if atime == UTIME_OMIT {
++		if atime.Sec == UTIME_OMIT {
 +			atime = st.Atime
 +		}
-+		if mtime == UTIME_OMIT {
++		if mtime.Sec == UTIME_OMIT {
 +			mtime = st.Mtime
 +		}
 +	}
