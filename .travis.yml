@@ -5,7 +5,7 @@ arch: amd64
 os:
   - windows
   - linux
-  - osx
+  - osx # default: MacOS 10.13, Kernel 17.6.0
 
 jobs:
   include:
@@ -17,9 +17,9 @@ jobs:
       osx_image: xcode12.2
     - os: osx # MacOS 10.14.6, Darwin 18.7.0
       osx_image: xcode11.3
-    - os: osx # MacOS 10.13, Darwin 17.7.0 for all images, fails when UTIME_OMIT is not both values
+    - os: osx # MacOS 10.13, Darwin 17.7.0
       osx_image: xcode10.1
-    - os: osx # MacOS 10.12, Darwin 16.7.0, build fails on _utimensat
+    - os: osx # MacOS 10.12, Darwin 16.7.0
       osx_image: xcode9.2
 
 go: 1.12.x
@@ -63,5 +63,5 @@ after_success:
   - cd ..
   - pwd
   - ./bin/go tool dist version
-  # - ./bin/go tool dist test
-  - ./bin/go tool dist test -run=".*os"
+  - ./bin/go tool dist test
+  # - ./bin/go tool dist test -run=".*os"
