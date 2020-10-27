@@ -1,4 +1,4 @@
-From 2a2917f9b760241091160adbe1f3986b3573dfe2 Mon Sep 17 00:00:00 2001
+From 6e758a820aad80ec18d6c9caa4f5b4d8dcd6637c Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -32,10 +32,10 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/syscall/fs_js.go                          | 14 +++
  src/syscall/syscall_bsd.go                    |  3 +-
  src/syscall/syscall_darwin.go                 | 18 +++-
- src/syscall/syscall_dragonfly.go              | 43 +++++++-
+ src/syscall/syscall_dragonfly.go              | 35 ++++++-
  src/syscall/syscall_windows.go                | 20 +++-
  src/syscall/zsyscall_dragonfly_amd64.go       | 15 ---
- 20 files changed, 216 insertions(+), 46 deletions(-)
+ 20 files changed, 208 insertions(+), 46 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -427,10 +427,10 @@ index afdadbf894..a827be7c59 100644
  	_, _, e1 := syscall6(
  		funcPC(libc_setattrlist_trampoline),
 diff --git a/src/syscall/syscall_dragonfly.go b/src/syscall/syscall_dragonfly.go
-index 0988fe4608..121ce0e9ec 100644
+index 0988fe4608..4285a3b947 100644
 --- a/src/syscall/syscall_dragonfly.go
 +++ b/src/syscall/syscall_dragonfly.go
-@@ -148,6 +148,48 @@ func setattrlistTimes(path string, times []Timespec) error {
+@@ -148,6 +148,40 @@ func setattrlistTimes(path string, times []Timespec) error {
  	return ENOSYS
  }
  
@@ -439,14 +439,6 @@ index 0988fe4608..121ce0e9ec 100644
 +func utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error) {
 +	// UTIME_OMIT value must match internal/syscall/unix/at_dragonfly.go
 +	const UTIME_OMIT = -0x2
-+	_p0, err := BytePtrFromString(path)
-+	if err != nil {
-+		return err
-+	}
-+
-+	var attrList attrList
-+	attrList.bitmapCount = attrBitMapCount
-+	attrList.CommonAttr = attrCmnModtime | attrCmnAcctime
 +
 +	atime := times[0]
 +	mtime := times[1]
@@ -456,10 +448,10 @@ index 0988fe4608..121ce0e9ec 100644
 +			return err
 +		}
 +		if atime.Sec == UTIME_OMIT {
-+			atime = st.Atimespec
++			atime = st.Atime
 +		}
 +		if mtime.Sec == UTIME_OMIT {
-+			mtime = st.Mtimespec
++			mtime = st.Mtime
 +		}
 +	}
 +
@@ -479,7 +471,7 @@ index 0988fe4608..121ce0e9ec 100644
  /*
   * Exposed directly
   */
-@@ -233,6 +275,5 @@ func setattrlistTimes(path string, times []Timespec) error {
+@@ -233,6 +267,5 @@ func setattrlistTimes(path string, times []Timespec) error {
  //sys	readlen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_READ
  //sys	writelen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_WRITE
  //sys	accept4(fd int, rsa *RawSockaddrAny, addrlen *_Socklen, flags int) (nfd int, err error)
