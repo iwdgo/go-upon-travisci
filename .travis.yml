@@ -3,7 +3,7 @@ language: go
 arch: amd64
 
 os:
-  - windows
+  # - windows
   - linux
 
 go: 1.13.x
@@ -39,7 +39,7 @@ script:
   - pwd
   - cd src
   - export GOOS=dragonfly
-  - export GOARCH=adm64
+  - export GOARCH=amd64
   - sh ./make.bash
 
 after_success:
