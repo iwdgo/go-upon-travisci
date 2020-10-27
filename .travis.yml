@@ -38,8 +38,8 @@ before_script:
 script:
   - pwd
   - cd src
-  - export GOOS=js
-  - export GOARCH=wasm
+  - export GOOS=dragonfly
+  - export GOARCH=adm64
   - sh ./make.bash
 
 after_success:
@@ -50,3 +50,4 @@ after_success:
   - pwd
   - ./bin/go tool dist version
   # - ./bin/go tool dist test
+  - ./bin/go tool dist test -run=".*os"
