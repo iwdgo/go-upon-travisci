@@ -1,4 +1,4 @@
-From 6e758a820aad80ec18d6c9caa4f5b4d8dcd6637c Mon Sep 17 00:00:00 2001
+From dae18aa330ffc366984575f7a598b8dca9c6979b Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -427,7 +427,7 @@ index afdadbf894..a827be7c59 100644
  	_, _, e1 := syscall6(
  		funcPC(libc_setattrlist_trampoline),
 diff --git a/src/syscall/syscall_dragonfly.go b/src/syscall/syscall_dragonfly.go
-index 0988fe4608..4285a3b947 100644
+index 0988fe4608..dc595fa675 100644
 --- a/src/syscall/syscall_dragonfly.go
 +++ b/src/syscall/syscall_dragonfly.go
 @@ -148,6 +148,40 @@ func setattrlistTimes(path string, times []Timespec) error {
@@ -448,10 +448,10 @@ index 0988fe4608..4285a3b947 100644
 +			return err
 +		}
 +		if atime.Sec == UTIME_OMIT {
-+			atime = st.Atime
++			atime = st.Atim
 +		}
 +		if mtime.Sec == UTIME_OMIT {
-+			mtime = st.Mtime
++			mtime = st.Mtim
 +		}
 +	}
 +
