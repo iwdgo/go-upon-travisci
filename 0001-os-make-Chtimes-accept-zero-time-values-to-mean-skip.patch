@@ -1,4 +1,4 @@
-From dae18aa330ffc366984575f7a598b8dca9c6979b Mon Sep 17 00:00:00 2001
+From f2ca922316ec2db77cd02a2c62462c36717350b3 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -15,27 +15,25 @@ Fixes #32558
 
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
- src/internal/syscall/unix/at_aix.go           |  1 +
- src/internal/syscall/unix/at_darwin.go        |  2 +
- src/internal/syscall/unix/at_freebsd.go       |  2 +
- src/internal/syscall/unix/at_js.go            | 13 +++
- src/internal/syscall/unix/at_solaris.go       |  2 +
- .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
- src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
- src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
- .../syscall/unix/at_sysnum_openbsd.go         |  2 +
- src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 12 ++-
- src/os/file_unix.go                           |  2 +
- src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 98 ++++++++++++++-----
- src/syscall/fs_js.go                          | 14 +++
- src/syscall/syscall_bsd.go                    |  3 +-
- src/syscall/syscall_darwin.go                 | 18 +++-
- src/syscall/syscall_dragonfly.go              | 35 ++++++-
- src/syscall/syscall_windows.go                | 20 +++-
- src/syscall/zsyscall_dragonfly_amd64.go       | 15 ---
- 20 files changed, 208 insertions(+), 46 deletions(-)
+ src/internal/syscall/unix/at_aix.go           |   1 +
+ src/internal/syscall/unix/at_darwin.go        |   2 +
+ src/internal/syscall/unix/at_freebsd.go       |   2 +
+ src/internal/syscall/unix/at_js.go            |  13 ++
+ src/internal/syscall/unix/at_solaris.go       |   2 +
+ .../syscall/unix/at_sysnum_dragonfly.go       |   4 +
+ src/internal/syscall/unix/at_sysnum_linux.go  |   2 +
+ src/internal/syscall/unix/at_sysnum_netbsd.go |   2 +
+ .../syscall/unix/at_sysnum_openbsd.go         |   2 +
+ src/os/file_plan9.go                          |   7 ++
+ src/os/file_posix.go                          |  12 +-
+ src/os/file_unix.go                           |   2 +
+ src/os/file_windows.go                        |   2 +
+ src/os/os_test.go                             | 112 ++++++++++++++----
+ src/syscall/fs_js.go                          |  14 +++
+ src/syscall/syscall_bsd.go                    |   3 +-
+ src/syscall/syscall_darwin.go                 |  18 ++-
+ src/syscall/syscall_windows.go                |  20 +++-
+ 18 files changed, 187 insertions(+), 33 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -105,15 +103,17 @@ index e917c4fc9b..4ab224d670 100644
 +	UTIME_OMIT = -0x2
  )
 diff --git a/src/internal/syscall/unix/at_sysnum_dragonfly.go b/src/internal/syscall/unix/at_sysnum_dragonfly.go
-index cec9abce6a..413806a481 100644
+index cec9abce6a..bf4972340a 100644
 --- a/src/internal/syscall/unix/at_sysnum_dragonfly.go
 +++ b/src/internal/syscall/unix/at_sysnum_dragonfly.go
-@@ -12,3 +12,5 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
+@@ -12,3 +12,7 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
  
  const AT_REMOVEDIR = 0x2
  const AT_SYMLINK_NOFOLLOW = 0x1
 +
-+const UTIME_OMIT = ((1 << 30) - 2)
++// UTIME_OMIT used on Mtime or both Atime and Mtime returns 2^63-2 nanoseconds for both values.
++//  This behavior does not seem expected.
++const UTIME_OMIT = -2
 diff --git a/src/internal/syscall/unix/at_sysnum_linux.go b/src/internal/syscall/unix/at_sysnum_linux.go
 index fa7cd75d42..f31c3a9315 100644
 --- a/src/internal/syscall/unix/at_sysnum_linux.go
@@ -225,10 +225,10 @@ index dfc5fc6ce6..e8c3e0eb51 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 378ddf58dd..ad636d79ff 100644
+index a1c0578887..6f39a1c478 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1344,38 +1344,92 @@ func testChtimes(t *testing.T, name string) {
+@@ -1356,38 +1356,100 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -236,38 +236,44 @@ index 378ddf58dd..ad636d79ff 100644
 -	// TODO(brainman): file.Chdir() is not implemented on windows.
 -	if runtime.GOOS == "windows" {
 -		return
+-	}
+-
+-	wd, err := Getwd()
 +func TestChtimesWithZeroTimes(t *testing.T) {
 +	noatime := false
++	dragonfly := false
 +	switch Getenv("GO_BUILDER_NAME") {
 +	case "plan9-arm", "netbsd-amd64-9_0":
 +		// Access time (Atime) cannot be handled on some builders (see mount with noatime)
 +		// For netbsd, see issue 19293.
 +		noatime = true
- 	}
- 
--	wd, err := Getwd()
++	case "dragonfly-amd64":
++		// For dragonfly, Atime manipulation is limited by Mtime value.
++		// time.Time{} is usable only for Atime with a value for Mtime (third test).
++		// The return value of Atime is then Mtime.
++		noatime = true
++		dragonfly = true
++	}
++
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())
 +
 +	_, err := file.Write([]byte("hello, world\n"))
- 	if err != nil {
--		t.Fatalf("Getwd: %s", err)
++	if err != nil {
 +		t.Fatalf("Write: %s", err)
- 	}
--	defer Chdir(wd)
--
--	fd, err := Open(".")
++	}
 +	fName := file.Name()
 +	file.Close()
 +	fs, err := Stat(fName)
  	if err != nil {
--		t.Fatalf("Open .: %s", err)
+-		t.Fatalf("Getwd: %s", err)
 +		t.Fatal(err)
  	}
--	defer fd.Close()
+-	defer Chdir(wd)
 -
--	if err := Chdir("/"); err != nil {
--		t.Fatalf("Chdir /: %s", err)
+-	fd, err := Open(".")
+-	if err != nil {
+-		t.Fatalf("Open .: %s", err)
 +	startAtime := Atime(fs)
 +	startMtime := fs.ModTime()
 +	switch runtime.GOOS {
@@ -275,12 +281,13 @@ index 378ddf58dd..ad636d79ff 100644
 +		startAtime = startAtime.Truncate(time.Second)
 +		startMtime = startMtime.Truncate(time.Second)
  	}
+-	defer fd.Close()
 +	at0 := startAtime
 +	mt0 := startMtime
 +	t0 := startMtime.Truncate(time.Second).Add(1 * time.Hour)
  
--	if err := fd.Chdir(); err != nil {
--		t.Fatalf("fd.Chdir: %s", err)
+-	if err := Chdir("/"); err != nil {
+-		t.Fatalf("Chdir /: %s", err)
 +	tests := []struct {
 +		aTime     time.Time
 +		mTime     time.Time
@@ -300,6 +307,7 @@ index 378ddf58dd..ad636d79ff 100644
 +			wantMTime: startMtime,
 +		},
 +		{
++			aTime:     time.Time{},
 +			mTime:     t0.Add(100 * time.Second),
 +			wantATime: t0.Add(200 * time.Second),
 +			wantMTime: t0.Add(100 * time.Second),
@@ -312,15 +320,18 @@ index 378ddf58dd..ad636d79ff 100644
 +		},
  	}
  
+-	if err := fd.Chdir(); err != nil {
+-		t.Fatalf("fd.Chdir: %s", err)
+-	}
++	for _, tt := range tests {
++		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
+ 
 -	wdNew, err := Getwd()
 -	if err != nil {
 -		t.Fatalf("Getwd: %s", err)
 -	}
 -	if wdNew != wd {
 -		t.Fatalf("fd.Chdir failed, got %s, want %s", wdNew, wd)
-+	for _, tt := range tests {
-+		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
-+
 +		// Now change the times accordingly.
 +		if err := Chtimes(fName, tt.aTime, tt.mTime); err != nil {
 +			t.Error(err)
@@ -337,7 +348,7 @@ index 378ddf58dd..ad636d79ff 100644
 +		if got, want := at0, tt.wantATime; !got.Equal(want) && !noatime {
 +			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
-+		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
++		if got, want := mt0, tt.wantMTime; !got.Equal(want) && !dragonfly {
 +			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
  	}
@@ -426,63 +437,11 @@ index afdadbf894..a827be7c59 100644
  	const options = 0
  	_, _, e1 := syscall6(
  		funcPC(libc_setattrlist_trampoline),
-diff --git a/src/syscall/syscall_dragonfly.go b/src/syscall/syscall_dragonfly.go
-index 0988fe4608..dc595fa675 100644
---- a/src/syscall/syscall_dragonfly.go
-+++ b/src/syscall/syscall_dragonfly.go
-@@ -148,6 +148,40 @@ func setattrlistTimes(path string, times []Timespec) error {
- 	return ENOSYS
- }
- 
-+// utimensat implementation includes a explicit check on UTIME_OMIT as
-+//  the syscall returns 2^63-2 nanoseconds when used.
-+func utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error) {
-+	// UTIME_OMIT value must match internal/syscall/unix/at_dragonfly.go
-+	const UTIME_OMIT = -0x2
-+
-+	atime := times[0]
-+	mtime := times[1]
-+	if atime.Nsec == UTIME_OMIT || mtime.Nsec == UTIME_OMIT {
-+		var st Stat_t
-+		if err := Stat(path, &st); err != nil {
-+			return err
-+		}
-+		if atime.Sec == UTIME_OMIT {
-+			atime = st.Atim
-+		}
-+		if mtime.Sec == UTIME_OMIT {
-+			mtime = st.Mtim
-+		}
-+	}
-+
-+	var _p0 *byte
-+	_p0, err = BytePtrFromString(path)
-+	if err != nil {
-+		return
-+	}
-+	_, _, e1 := Syscall6(SYS_UTIMENSAT, uintptr(dirfd), uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(times)), uintptr(flag), 0, 0)
-+	if e1 != 0 {
-+		err = errnoErr(e1)
-+	}
-+	return
-+
-+}
-+
- /*
-  * Exposed directly
-  */
-@@ -233,6 +267,5 @@ func setattrlistTimes(path string, times []Timespec) error {
- //sys	readlen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_READ
- //sys	writelen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_WRITE
- //sys	accept4(fd int, rsa *RawSockaddrAny, addrlen *_Socklen, flags int) (nfd int, err error)
--//sys	utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error)
- //sys	getcwd(buf []byte) (n int, err error) = SYS___GETCWD
- //sys	sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error) = SYS___SYSCTL
 diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
-index 40c43de84c..96f3194e09 100644
+index 0eea2b87a9..7308e95c63 100644
 --- a/src/syscall/syscall_windows.go
 +++ b/src/syscall/syscall_windows.go
-@@ -587,8 +587,14 @@ func Utimes(path string, tv []Timeval) (err error) {
+@@ -588,8 +588,14 @@ func Utimes(path string, tv []Timeval) (err error) {
  		return e
  	}
  	defer Close(h)
@@ -499,7 +458,7 @@ index 40c43de84c..96f3194e09 100644
  	return SetFileTime(h, nil, &a, &w)
  }
  
-@@ -607,8 +613,14 @@ func UtimesNano(path string, ts []Timespec) (err error) {
+@@ -608,8 +614,14 @@ func UtimesNano(path string, ts []Timespec) (err error) {
  		return e
  	}
  	defer Close(h)
@@ -516,32 +475,6 @@ index 40c43de84c..96f3194e09 100644
  	return SetFileTime(h, nil, &a, &w)
  }
  
-diff --git a/src/syscall/zsyscall_dragonfly_amd64.go b/src/syscall/zsyscall_dragonfly_amd64.go
-index 578b5a3e9e..a022d41fec 100644
---- a/src/syscall/zsyscall_dragonfly_amd64.go
-+++ b/src/syscall/zsyscall_dragonfly_amd64.go
-@@ -1294,21 +1294,6 @@ func accept4(fd int, rsa *RawSockaddrAny, addrlen *_Socklen, flags int) (nfd int
- 
- // THIS FILE IS GENERATED BY THE COMMAND AT THE TOP; DO NOT EDIT
- 
--func utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error) {
--	var _p0 *byte
--	_p0, err = BytePtrFromString(path)
--	if err != nil {
--		return
--	}
--	_, _, e1 := Syscall6(SYS_UTIMENSAT, uintptr(dirfd), uintptr(unsafe.Pointer(_p0)), uintptr(unsafe.Pointer(times)), uintptr(flag), 0, 0)
--	if e1 != 0 {
--		err = errnoErr(e1)
--	}
--	return
--}
--
--// THIS FILE IS GENERATED BY THE COMMAND AT THE TOP; DO NOT EDIT
--
- func getcwd(buf []byte) (n int, err error) {
- 	var _p0 unsafe.Pointer
- 	if len(buf) > 0 {
 -- 
 2.28.0.windows.1
 
