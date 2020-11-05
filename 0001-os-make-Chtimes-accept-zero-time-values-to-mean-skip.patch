@@ -1,4 +1,4 @@
-From f2ca922316ec2db77cd02a2c62462c36717350b3 Mon Sep 17 00:00:00 2001
+From 9524016a22adc4470cbfdab042f4835a80c159c0 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -18,7 +18,7 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/internal/syscall/unix/at_aix.go           |   1 +
  src/internal/syscall/unix/at_darwin.go        |   2 +
  src/internal/syscall/unix/at_freebsd.go       |   2 +
- src/internal/syscall/unix/at_js.go            |  13 ++
+ src/internal/syscall/unix/at_js.go            |  13 +++
  src/internal/syscall/unix/at_solaris.go       |   2 +
  .../syscall/unix/at_sysnum_dragonfly.go       |   4 +
  src/internal/syscall/unix/at_sysnum_linux.go  |   2 +
@@ -28,12 +28,12 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 112 ++++++++++++++----
+ src/os/os_test.go                             | 104 ++++++++++++++----
  src/syscall/fs_js.go                          |  14 +++
  src/syscall/syscall_bsd.go                    |   3 +-
  src/syscall/syscall_darwin.go                 |  18 ++-
  src/syscall/syscall_windows.go                |  20 +++-
- 18 files changed, 187 insertions(+), 33 deletions(-)
+ 18 files changed, 182 insertions(+), 30 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,10 +225,10 @@ index dfc5fc6ce6..e8c3e0eb51 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index a1c0578887..6f39a1c478 100644
+index a1c0578887..c58ecd9b0a 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1356,38 +1356,100 @@ func testChtimes(t *testing.T, name string) {
+@@ -1356,38 +1356,98 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -236,12 +236,8 @@ index a1c0578887..6f39a1c478 100644
 -	// TODO(brainman): file.Chdir() is not implemented on windows.
 -	if runtime.GOOS == "windows" {
 -		return
--	}
--
--	wd, err := Getwd()
 +func TestChtimesWithZeroTimes(t *testing.T) {
 +	noatime := false
-+	dragonfly := false
 +	switch Getenv("GO_BUILDER_NAME") {
 +	case "plan9-arm", "netbsd-amd64-9_0":
 +		// Access time (Atime) cannot be handled on some builders (see mount with noatime)
@@ -251,29 +247,32 @@ index a1c0578887..6f39a1c478 100644
 +		// For dragonfly, Atime manipulation is limited by Mtime value.
 +		// time.Time{} is usable only for Atime with a value for Mtime (third test).
 +		// The return value of Atime is then Mtime.
-+		noatime = true
-+		dragonfly = true
-+	}
-+
++		t.Skip("use of UTIME_OMIT in utimensat fails")
+ 	}
+ 
+-	wd, err := Getwd()
 +	file := newFile("chtimes-with-zero", t)
 +	defer Remove(file.Name())
 +
 +	_, err := file.Write([]byte("hello, world\n"))
-+	if err != nil {
-+		t.Fatalf("Write: %s", err)
-+	}
-+	fName := file.Name()
-+	file.Close()
-+	fs, err := Stat(fName)
  	if err != nil {
 -		t.Fatalf("Getwd: %s", err)
-+		t.Fatal(err)
++		t.Fatalf("Write: %s", err)
  	}
 -	defer Chdir(wd)
 -
 -	fd, err := Open(".")
--	if err != nil {
++	fName := file.Name()
++	file.Close()
++	fs, err := Stat(fName)
+ 	if err != nil {
 -		t.Fatalf("Open .: %s", err)
++		t.Fatal(err)
+ 	}
+-	defer fd.Close()
+-
+-	if err := Chdir("/"); err != nil {
+-		t.Fatalf("Chdir /: %s", err)
 +	startAtime := Atime(fs)
 +	startMtime := fs.ModTime()
 +	switch runtime.GOOS {
@@ -281,13 +280,12 @@ index a1c0578887..6f39a1c478 100644
 +		startAtime = startAtime.Truncate(time.Second)
 +		startMtime = startMtime.Truncate(time.Second)
  	}
--	defer fd.Close()
 +	at0 := startAtime
 +	mt0 := startMtime
 +	t0 := startMtime.Truncate(time.Second).Add(1 * time.Hour)
  
--	if err := Chdir("/"); err != nil {
--		t.Fatalf("Chdir /: %s", err)
+-	if err := fd.Chdir(); err != nil {
+-		t.Fatalf("fd.Chdir: %s", err)
 +	tests := []struct {
 +		aTime     time.Time
 +		mTime     time.Time
@@ -320,18 +318,15 @@ index a1c0578887..6f39a1c478 100644
 +		},
  	}
  
--	if err := fd.Chdir(); err != nil {
--		t.Fatalf("fd.Chdir: %s", err)
--	}
-+	for _, tt := range tests {
-+		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
- 
 -	wdNew, err := Getwd()
 -	if err != nil {
 -		t.Fatalf("Getwd: %s", err)
 -	}
 -	if wdNew != wd {
 -		t.Fatalf("fd.Chdir failed, got %s, want %s", wdNew, wd)
++	for _, tt := range tests {
++		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
++
 +		// Now change the times accordingly.
 +		if err := Chtimes(fName, tt.aTime, tt.mTime); err != nil {
 +			t.Error(err)
@@ -348,7 +343,7 @@ index a1c0578887..6f39a1c478 100644
 +		if got, want := at0, tt.wantATime; !got.Equal(want) && !noatime {
 +			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
-+		if got, want := mt0, tt.wantMTime; !got.Equal(want) && !dragonfly {
++		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
 +			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
 +		}
  	}
