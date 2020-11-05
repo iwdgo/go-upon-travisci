@@ -1,4 +1,4 @@
-From 9c08a1058d929521f3b3a900cd0b84e17cc35fb6 Mon Sep 17 00:00:00 2001
+From 9524016a22adc4470cbfdab042f4835a80c159c0 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -15,25 +15,25 @@ Fixes #32558
 
 Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
 ---
- src/internal/syscall/unix/at_aix.go           |  1 +
- src/internal/syscall/unix/at_darwin.go        |  2 +
- src/internal/syscall/unix/at_freebsd.go       |  2 +
- src/internal/syscall/unix/at_js.go            | 13 +++
- src/internal/syscall/unix/at_solaris.go       |  2 +
- .../syscall/unix/at_sysnum_dragonfly.go       |  2 +
- src/internal/syscall/unix/at_sysnum_linux.go  |  2 +
- src/internal/syscall/unix/at_sysnum_netbsd.go |  2 +
- .../syscall/unix/at_sysnum_openbsd.go         |  2 +
- src/os/file_plan9.go                          |  7 ++
- src/os/file_posix.go                          | 12 ++-
- src/os/file_unix.go                           |  2 +
- src/os/file_windows.go                        |  2 +
- src/os/os_test.go                             | 98 ++++++++++++++-----
- src/syscall/fs_js.go                          | 14 +++
- src/syscall/syscall_bsd.go                    |  3 +-
- src/syscall/syscall_darwin.go                 | 18 +++-
- src/syscall/syscall_windows.go                | 20 +++-
- 18 files changed, 174 insertions(+), 30 deletions(-)
+ src/internal/syscall/unix/at_aix.go           |   1 +
+ src/internal/syscall/unix/at_darwin.go        |   2 +
+ src/internal/syscall/unix/at_freebsd.go       |   2 +
+ src/internal/syscall/unix/at_js.go            |  13 +++
+ src/internal/syscall/unix/at_solaris.go       |   2 +
+ .../syscall/unix/at_sysnum_dragonfly.go       |   4 +
+ src/internal/syscall/unix/at_sysnum_linux.go  |   2 +
+ src/internal/syscall/unix/at_sysnum_netbsd.go |   2 +
+ .../syscall/unix/at_sysnum_openbsd.go         |   2 +
+ src/os/file_plan9.go                          |   7 ++
+ src/os/file_posix.go                          |  12 +-
+ src/os/file_unix.go                           |   2 +
+ src/os/file_windows.go                        |   2 +
+ src/os/os_test.go                             | 104 ++++++++++++++----
+ src/syscall/fs_js.go                          |  14 +++
+ src/syscall/syscall_bsd.go                    |   3 +-
+ src/syscall/syscall_darwin.go                 |  18 ++-
+ src/syscall/syscall_windows.go                |  20 +++-
+ 18 files changed, 182 insertions(+), 30 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -74,11 +74,11 @@ index e171f4dbb5..6cc5e8aef5 100644
  func Unlinkat(dirfd int, path string, flags int) error {
 diff --git a/src/internal/syscall/unix/at_js.go b/src/internal/syscall/unix/at_js.go
 new file mode 100644
-index 0000000000..f63ca97c31
+index 0000000000..d05ccce895
 --- /dev/null
 +++ b/src/internal/syscall/unix/at_js.go
 @@ -0,0 +1,13 @@
-+// Copyright 2018 The Go Authors. All rights reserved.
++// Copyright 2020 The Go Authors. All rights reserved.
 +// Use of this source code is governed by a BSD-style
 +// license that can be found in the LICENSE file.
 +
@@ -103,15 +103,17 @@ index e917c4fc9b..4ab224d670 100644
 +	UTIME_OMIT = -0x2
  )
 diff --git a/src/internal/syscall/unix/at_sysnum_dragonfly.go b/src/internal/syscall/unix/at_sysnum_dragonfly.go
-index cec9abce6a..3ae70c3687 100644
+index cec9abce6a..bf4972340a 100644
 --- a/src/internal/syscall/unix/at_sysnum_dragonfly.go
 +++ b/src/internal/syscall/unix/at_sysnum_dragonfly.go
-@@ -12,3 +12,5 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
+@@ -12,3 +12,7 @@ const fstatatTrap uintptr = syscall.SYS_FSTATAT
  
  const AT_REMOVEDIR = 0x2
  const AT_SYMLINK_NOFOLLOW = 0x1
 +
-+const UTIME_OMIT = -0x2
++// UTIME_OMIT used on Mtime or both Atime and Mtime returns 2^63-2 nanoseconds for both values.
++//  This behavior does not seem expected.
++const UTIME_OMIT = -2
 diff --git a/src/internal/syscall/unix/at_sysnum_linux.go b/src/internal/syscall/unix/at_sysnum_linux.go
 index fa7cd75d42..f31c3a9315 100644
 --- a/src/internal/syscall/unix/at_sysnum_linux.go
@@ -223,10 +225,10 @@ index dfc5fc6ce6..e8c3e0eb51 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index 378ddf58dd..ad636d79ff 100644
+index a1c0578887..c58ecd9b0a 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1344,38 +1344,92 @@ func testChtimes(t *testing.T, name string) {
+@@ -1356,38 +1356,98 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -241,6 +243,11 @@ index 378ddf58dd..ad636d79ff 100644
 +		// Access time (Atime) cannot be handled on some builders (see mount with noatime)
 +		// For netbsd, see issue 19293.
 +		noatime = true
++	case "dragonfly-amd64":
++		// For dragonfly, Atime manipulation is limited by Mtime value.
++		// time.Time{} is usable only for Atime with a value for Mtime (third test).
++		// The return value of Atime is then Mtime.
++		t.Skip("use of UTIME_OMIT in utimensat fails")
  	}
  
 -	wd, err := Getwd()
@@ -298,6 +305,7 @@ index 378ddf58dd..ad636d79ff 100644
 +			wantMTime: startMtime,
 +		},
 +		{
++			aTime:     time.Time{},
 +			mTime:     t0.Add(100 * time.Second),
 +			wantATime: t0.Add(200 * time.Second),
 +			wantMTime: t0.Add(100 * time.Second),
@@ -425,10 +433,10 @@ index afdadbf894..a827be7c59 100644
  	_, _, e1 := syscall6(
  		funcPC(libc_setattrlist_trampoline),
 diff --git a/src/syscall/syscall_windows.go b/src/syscall/syscall_windows.go
-index 40c43de84c..96f3194e09 100644
+index 0eea2b87a9..7308e95c63 100644
 --- a/src/syscall/syscall_windows.go
 +++ b/src/syscall/syscall_windows.go
-@@ -587,8 +587,14 @@ func Utimes(path string, tv []Timeval) (err error) {
+@@ -588,8 +588,14 @@ func Utimes(path string, tv []Timeval) (err error) {
  		return e
  	}
  	defer Close(h)
@@ -445,7 +453,7 @@ index 40c43de84c..96f3194e09 100644
  	return SetFileTime(h, nil, &a, &w)
  }
  
-@@ -607,8 +613,14 @@ func UtimesNano(path string, ts []Timespec) (err error) {
+@@ -608,8 +614,14 @@ func UtimesNano(path string, ts []Timespec) (err error) {
  		return e
  	}
  	defer Close(h)
