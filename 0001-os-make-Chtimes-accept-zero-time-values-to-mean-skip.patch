@@ -1,4 +1,4 @@
-From 24428b0e3f4f6bfeab82e316f8f90b96af3afc6c Mon Sep 17 00:00:00 2001
+From 87c858997e4623c3ec42cecfdd0c299a94233365 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,12 +28,12 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 107 ++++++++++++++----
+ src/os/os_test.go                             | 105 ++++++++++++++----
  src/syscall/fs_js.go                          |  14 +++
  src/syscall/syscall_bsd.go                    |   3 +-
  src/syscall/syscall_darwin.go                 |  18 ++-
  src/syscall/syscall_windows.go                |  20 +++-
- 18 files changed, 187 insertions(+), 28 deletions(-)
+ 18 files changed, 185 insertions(+), 28 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,10 +225,10 @@ index dfc5fc6ce6..e8c3e0eb51 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index a1c0578887..b631b5837a 100644
+index a1c0578887..7a802257d1 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1356,38 +1356,105 @@ func testChtimes(t *testing.T, name string) {
+@@ -1356,38 +1356,103 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -320,8 +320,6 @@ index a1c0578887..b631b5837a 100644
 -	if err := fd.Chdir(); err != nil {
 -		t.Fatalf("fd.Chdir: %s", err)
 +	for _, tt := range tests {
-+		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
-+
 +		// Now change the times accordingly.
 +		if err := Chtimes(fName, tt.aTime, tt.mTime); err != nil {
 +			t.Error(err)
