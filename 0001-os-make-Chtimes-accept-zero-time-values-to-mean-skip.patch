@@ -1,4 +1,4 @@
-From 9524016a22adc4470cbfdab042f4835a80c159c0 Mon Sep 17 00:00:00 2001
+From 24428b0e3f4f6bfeab82e316f8f90b96af3afc6c Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Mon, 19 Oct 2020 19:19:17 +0200
 Subject: [PATCH] os: make Chtimes accept zero time values to mean skipping
@@ -28,12 +28,12 @@ Change-Id: I1aff42f30668ff505ecec2e9509d8f2b8e4b1b6a
  src/os/file_posix.go                          |  12 +-
  src/os/file_unix.go                           |   2 +
  src/os/file_windows.go                        |   2 +
- src/os/os_test.go                             | 104 ++++++++++++++----
+ src/os/os_test.go                             | 107 ++++++++++++++----
  src/syscall/fs_js.go                          |  14 +++
  src/syscall/syscall_bsd.go                    |   3 +-
  src/syscall/syscall_darwin.go                 |  18 ++-
  src/syscall/syscall_windows.go                |  20 +++-
- 18 files changed, 182 insertions(+), 30 deletions(-)
+ 18 files changed, 187 insertions(+), 28 deletions(-)
  create mode 100644 src/internal/syscall/unix/at_js.go
 
 diff --git a/src/internal/syscall/unix/at_aix.go b/src/internal/syscall/unix/at_aix.go
@@ -225,10 +225,10 @@ index dfc5fc6ce6..e8c3e0eb51 100644
  // The extra level of indirection ensures that no clients of os
  // can overwrite this data, which could cause the finalizer
 diff --git a/src/os/os_test.go b/src/os/os_test.go
-index a1c0578887..c58ecd9b0a 100644
+index a1c0578887..b631b5837a 100644
 --- a/src/os/os_test.go
 +++ b/src/os/os_test.go
-@@ -1356,38 +1356,98 @@ func testChtimes(t *testing.T, name string) {
+@@ -1356,38 +1356,105 @@ func testChtimes(t *testing.T, name string) {
  	}
  }
  
@@ -238,21 +238,20 @@ index a1c0578887..c58ecd9b0a 100644
 -		return
 +func TestChtimesWithZeroTimes(t *testing.T) {
 +	noatime := false
-+	switch Getenv("GO_BUILDER_NAME") {
-+	case "plan9-arm", "netbsd-amd64-9_0":
-+		// Access time (Atime) cannot be handled on some builders (see mount with noatime)
++	switch runtime.GOOS {
++	case "plan9", "netbsd":
++		// Access time (Atime) cannot be handled on builders when noatime is used for mount.
 +		// For netbsd, see issue 19293.
 +		noatime = true
-+	case "dragonfly-amd64":
-+		// For dragonfly, Atime manipulation is limited by Mtime value.
++	case "dragonfly":
++		// Atime manipulation is limited by Mtime value.
 +		// time.Time{} is usable only for Atime with a value for Mtime (third test).
 +		// The return value of Atime is then Mtime.
-+		t.Skip("use of UTIME_OMIT in utimensat fails")
++		t.Skip("use of UTIME_OMIT in utimensat is limited")
  	}
  
 -	wd, err := Getwd()
 +	file := newFile("chtimes-with-zero", t)
-+	defer Remove(file.Name())
 +
 +	_, err := file.Write([]byte("hello, world\n"))
  	if err != nil {
@@ -263,29 +262,29 @@ index a1c0578887..c58ecd9b0a 100644
 -
 -	fd, err := Open(".")
 +	fName := file.Name()
-+	file.Close()
-+	fs, err := Stat(fName)
++	err = file.Close()
  	if err != nil {
 -		t.Fatalf("Open .: %s", err)
++		t.Errorf("%v", err)
++	}
++	fs, err := Stat(fName)
++	if err != nil {
 +		t.Fatal(err)
  	}
 -	defer fd.Close()
--
--	if err := Chdir("/"); err != nil {
--		t.Fatalf("Chdir /: %s", err)
 +	startAtime := Atime(fs)
 +	startMtime := fs.ModTime()
 +	switch runtime.GOOS {
 +	case "js":
 +		startAtime = startAtime.Truncate(time.Second)
 +		startMtime = startMtime.Truncate(time.Second)
- 	}
++	}
 +	at0 := startAtime
 +	mt0 := startMtime
 +	t0 := startMtime.Truncate(time.Second).Add(1 * time.Hour)
  
--	if err := fd.Chdir(); err != nil {
--		t.Fatalf("fd.Chdir: %s", err)
+-	if err := Chdir("/"); err != nil {
+-		t.Fatalf("Chdir /: %s", err)
 +	tests := []struct {
 +		aTime     time.Time
 +		mTime     time.Time
@@ -318,12 +317,8 @@ index a1c0578887..c58ecd9b0a 100644
 +		},
  	}
  
--	wdNew, err := Getwd()
--	if err != nil {
--		t.Fatalf("Getwd: %s", err)
--	}
--	if wdNew != wd {
--		t.Fatalf("fd.Chdir failed, got %s, want %s", wdNew, wd)
+-	if err := fd.Chdir(); err != nil {
+-		t.Fatalf("fd.Chdir: %s", err)
 +	for _, tt := range tests {
 +		t.Logf("ATime:%q-MTime:%q", tt.aTime, tt.mTime)
 +
@@ -341,11 +336,21 @@ index a1c0578887..c58ecd9b0a 100644
 +		mt0 = fs.ModTime()
 +
 +		if got, want := at0, tt.wantATime; !got.Equal(want) && !noatime {
-+			t.Errorf("AccessTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			t.Errorf("AccessTime mismatch with values ATime:%q-MTime:%q\ngot:  %q\nwant: %q", tt.aTime, tt.mTime, got, want)
 +		}
 +		if got, want := mt0, tt.wantMTime; !got.Equal(want) {
-+			t.Errorf("ModTime mismatch:\ngot:  %q\nwant: %q", got, want)
++			t.Errorf("ModTime mismatch with values ATime:%q-MTime:%q\ngot:  %q\nwant: %q", tt.aTime, tt.mTime, got, want)
 +		}
+ 	}
+ 
+-	wdNew, err := Getwd()
++	err = Remove(file.Name())
+ 	if err != nil {
+-		t.Fatalf("Getwd: %s", err)
+-	}
+-	if wdNew != wd {
+-		t.Fatalf("fd.Chdir failed, got %s, want %s", wdNew, wd)
++		t.Errorf("%v", err)
  	}
  }
  
@@ -382,7 +387,7 @@ index 673feea77f..95bf4b7f0c 100644
  	return err
  }
 diff --git a/src/syscall/syscall_bsd.go b/src/syscall/syscall_bsd.go
-index 1c7ec588bc..bfe70b2ef5 100644
+index 1c7ec588bc..74dab359d8 100644
 --- a/src/syscall/syscall_bsd.go
 +++ b/src/syscall/syscall_bsd.go
 @@ -523,7 +523,8 @@ func UtimesNano(path string, ts []Timespec) error {
@@ -391,7 +396,7 @@ index 1c7ec588bc..bfe70b2ef5 100644
  	}
 -	// Darwin setattrlist can set nanosecond timestamps
 +	// Darwin setattrlist can set nanosecond timestamps.
-+	//  Utimensat is available from kernel 17
++	// Utimensat is available from Darwin kernel 17.
  	err := setattrlistTimes(path, ts)
  	if err != ENOSYS {
  		return err
