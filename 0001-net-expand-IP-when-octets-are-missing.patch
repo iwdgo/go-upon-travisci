@@ -1,0 +1,64 @@
+From 8ab2fd31c348eb97c77f3ce73fd18a2b830e9ced Mon Sep 17 00:00:00 2001
+From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
+Date: Sun, 8 Nov 2020 09:52:52 +0100
+Subject: [PATCH] net: expand IP when octets are missing
+
+Fixes #36822
+
+Change-Id: I9104aada448eeb9173d3807ac1901b34cbed6010
+---
+ src/net/ip.go      | 16 +++++++++++++---
+ src/net/ip_test.go |  3 +++
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/src/net/ip.go b/src/net/ip.go
+index c00fe8ed3c..81c97bd93e 100644
+--- a/src/net/ip.go
++++ b/src/net/ip.go
+@@ -12,7 +12,10 @@
+ 
+ package net
+ 
+-import "internal/bytealg"
++import (
++	"internal/bytealg"
++	"net"
++)
+ 
+ // IP address lengths (bytes).
+ const (
+@@ -539,8 +542,15 @@ func parseIPv4(s string) IP {
+ 	var p [IPv4len]byte
+ 	for i := 0; i < IPv4len; i++ {
+ 		if len(s) == 0 {
+-			// Missing octets.
+-			return nil
++			if i == 0 {
++				return nil
++			}
++			// Shift values right
++			for j := 0; j < i; j++ {
++				p[net.IPv4len-j-1] = p[i-j-1]
++				p[i-j-1] = 0
++			}
++			break
+ 		}
+ 		if i > 0 {
+ 			if s[0] != '.' {
+diff --git a/src/net/ip_test.go b/src/net/ip_test.go
+index a5fc5e644a..02af6c94d9 100644
+--- a/src/net/ip_test.go
++++ b/src/net/ip_test.go
+@@ -41,6 +41,9 @@ var parseIPTests = []struct {
+ 	{"fe80::1%lo0", nil},
+ 	{"fe80::1%911", nil},
+ 	{"", nil},
++	{"1", IPv4(0, 0, 0, 1)},
++	{"1.2", IPv4(0, 0, 1, 2)},
++	{"1.2.3", IPv4(0, 1, 2, 3)},
+ 	{"a1:a2:a3:a4::b1:b2:b3:b4", nil}, // Issue 6628
+ }
+ 
+-- 
+2.28.0.windows.1
+
