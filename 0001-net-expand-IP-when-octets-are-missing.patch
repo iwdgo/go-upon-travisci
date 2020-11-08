@@ -1,4 +1,4 @@
-From 344b89bf7ab6414442a8d407ff4a38b57430a219 Mon Sep 17 00:00:00 2001
+From fba5f8412d988899df7fa6564d04a47202eab4e5 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 8 Nov 2020 09:52:52 +0100
 Subject: [PATCH] net: expand IP when octets are missing
@@ -7,26 +7,15 @@ Fixes #36822
 
 Change-Id: I9104aada448eeb9173d3807ac1901b34cbed6010
 ---
- src/net/ip.go      | 15 ++++++++++++---
+ src/net/ip.go      | 13 ++++++++++---
  src/net/ip_test.go |  3 +++
- 2 files changed, 15 insertions(+), 3 deletions(-)
+ 2 files changed, 13 insertions(+), 3 deletions(-)
 
 diff --git a/src/net/ip.go b/src/net/ip.go
-index c00fe8ed3c..c6fe4d5f5d 100644
+index c00fe8ed3c..d0e69fb640 100644
 --- a/src/net/ip.go
 +++ b/src/net/ip.go
-@@ -12,7 +12,9 @@
- 
- package net
- 
--import "internal/bytealg"
-+import (
-+	"internal/bytealg"
-+)
- 
- // IP address lengths (bytes).
- const (
-@@ -539,8 +541,15 @@ func parseIPv4(s string) IP {
+@@ -539,8 +539,15 @@ func parseIPv4(s string) IP {
  	var p [IPv4len]byte
  	for i := 0; i < IPv4len; i++ {
  		if len(s) == 0 {
@@ -44,6 +33,15 @@ index c00fe8ed3c..c6fe4d5f5d 100644
  		}
  		if i > 0 {
  			if s[0] != '.' {
+@@ -684,7 +691,7 @@ func ParseIP(s string) IP {
+ 			return parseIPv6(s)
+ 		}
+ 	}
+-	return nil
++	return parseIPv4(s)
+ }
+ 
+ // parseIPZone parses s as an IP address, return it and its associated zone
 diff --git a/src/net/ip_test.go b/src/net/ip_test.go
 index a5fc5e644a..02af6c94d9 100644
 --- a/src/net/ip_test.go
