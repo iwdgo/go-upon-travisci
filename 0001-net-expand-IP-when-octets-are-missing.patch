@@ -1,4 +1,4 @@
-From fba5f8412d988899df7fa6564d04a47202eab4e5 Mon Sep 17 00:00:00 2001
+From f8c016c4efd27805bd64a5900be6814d94130466 Mon Sep 17 00:00:00 2001
 From: Constantin Konstantinidis <constantinkonstantinidis@gmail.com>
 Date: Sun, 8 Nov 2020 09:52:52 +0100
 Subject: [PATCH] net: expand IP when octets are missing
@@ -7,12 +7,27 @@ Fixes #36822
 
 Change-Id: I9104aada448eeb9173d3807ac1901b34cbed6010
 ---
- src/net/ip.go      | 13 ++++++++++---
- src/net/ip_test.go |  3 +++
- 2 files changed, 13 insertions(+), 3 deletions(-)
+ src/net/example_test.go |  2 +-
+ src/net/ip.go           | 17 ++++++++++++-----
+ src/net/ip_test.go      |  3 +++
+ src/net/lookup_test.go  |  2 +-
+ 4 files changed, 17 insertions(+), 7 deletions(-)
 
+diff --git a/src/net/example_test.go b/src/net/example_test.go
+index 72c7183c13..3a906a18fa 100644
+--- a/src/net/example_test.go
++++ b/src/net/example_test.go
+@@ -113,7 +113,7 @@ func ExampleParseIP() {
+ 	// Output:
+ 	// 192.0.2.1
+ 	// 2001:db8::68
+-	// <nil>
++	// 0.192.0.2
+ }
+ 
+ func ExampleIP_DefaultMask() {
 diff --git a/src/net/ip.go b/src/net/ip.go
-index c00fe8ed3c..d0e69fb640 100644
+index c00fe8ed3c..b885da4b77 100644
 --- a/src/net/ip.go
 +++ b/src/net/ip.go
 @@ -539,8 +539,15 @@ func parseIPv4(s string) IP {
@@ -33,7 +48,7 @@ index c00fe8ed3c..d0e69fb640 100644
  		}
  		if i > 0 {
  			if s[0] != '.' {
-@@ -684,7 +691,7 @@ func ParseIP(s string) IP {
+@@ -684,10 +691,10 @@ func ParseIP(s string) IP {
  			return parseIPv6(s)
  		}
  	}
@@ -41,7 +56,20 @@ index c00fe8ed3c..d0e69fb640 100644
 +	return parseIPv4(s)
  }
  
- // parseIPZone parses s as an IP address, return it and its associated zone
+-// parseIPZone parses s as an IP address, return it and its associated zone
++// parseIPZone parses s as an IP address, returns it with its associated zone
+ // identifier (IPv6 only).
+ func parseIPZone(s string) (IP, string) {
+ 	for i := 0; i < len(s); i++ {
+@@ -698,7 +705,7 @@ func parseIPZone(s string) (IP, string) {
+ 			return parseIPv6Zone(s)
+ 		}
+ 	}
+-	return nil, ""
++	return parseIPv4(s), ""
+ }
+ 
+ // ParseCIDR parses s as a CIDR notation IP address and prefix length,
 diff --git a/src/net/ip_test.go b/src/net/ip_test.go
 index a5fc5e644a..02af6c94d9 100644
 --- a/src/net/ip_test.go
@@ -56,6 +84,19 @@ index a5fc5e644a..02af6c94d9 100644
  	{"a1:a2:a3:a4::b1:b2:b3:b4", nil}, // Issue 6628
  }
  
+diff --git a/src/net/lookup_test.go b/src/net/lookup_test.go
+index 32a0d377da..7a13f8fa25 100644
+--- a/src/net/lookup_test.go
++++ b/src/net/lookup_test.go
+@@ -477,7 +477,7 @@ var revAddrTests = []struct {
+ 	{"1::", "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.0.0.ip6.arpa.", ""},
+ 	{"1234:567::89a:bcde", "e.d.c.b.a.9.8.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.7.6.5.0.4.3.2.1.ip6.arpa.", ""},
+ 	{"1234:567:fefe:bcbc:adad:9e4a:89a:bcde", "e.d.c.b.a.9.8.0.a.4.e.9.d.a.d.a.c.b.c.b.e.f.e.f.7.6.5.0.4.3.2.1.ip6.arpa.", ""},
+-	{"1.2.3", "", "unrecognized address"},
++	{"1.2.3", "3.2.1.0.in-addr.arpa.", ""},
+ 	{"1.2.3.4.5", "", "unrecognized address"},
+ 	{"1234:567:bcbca::89a:bcde", "", "unrecognized address"},
+ 	{"1234:567::bcbc:adad::89a:bcde", "", "unrecognized address"},
 -- 
 2.28.0.windows.1
 
