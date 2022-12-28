@@ -33,7 +33,7 @@ jobs:
         go tool dist test
 
     - name: Upload go executable
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v3
       with:
-        name: gotip
+        name: gotip-${{ env.RUNNER_OS }}
         path: go/bin/go
