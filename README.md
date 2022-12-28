@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.com/iWdGo/go-upon-ci.svg?branch=master)](https://travis-ci.com/iWdGo/go-upon-ci)
-[![Build Status](https://api.cirrus-ci.com/github/iWdGo/go-upon-ci.svg)](https://cirrus-ci.com/github/iWdGo/go-upon-ci)
-![Build status](https://github.com/iWdGo/go-upon-ci/workflows/Go/badge.svg)
+[![Build Status](https://travis-ci.com/iwdgo/go-upon-ci.svg?branch=master)](https://travis-ci.com/iWdGo/go-upon-ci)
+[![Build Status](https://api.cirrus-ci.com/github/iwdgo/go-upon-ci.svg)](https://cirrus-ci.com/github/iWdGo/go-upon-ci)
+[![Go](https://github.com/iwdgo/go-upon-ci/actions/workflows/go.yml/badge.svg)](https://github.com/iwdgo/go-upon-ci/actions/workflows/go.yml)
 
 # Toolchain of go lang on tip
 
