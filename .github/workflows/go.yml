@@ -35,5 +35,11 @@ jobs:
     - name: Upload go executable
       uses: actions/upload-artifact@v3
       with:
-        name: gotip-${{ env.RUNNER_OS }}
+        name: gotip-${{ github.RUNNER_OS }}
         path: go/bin/go
+
+    - name: Upload gofmt executable
+      uses: actions/upload-artifact@v3
+      with:
+        name: gofmttip-${{ github.RUNNER_OS }}
+        path: go/bin/gofmt
