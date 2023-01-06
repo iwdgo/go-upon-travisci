@@ -7,10 +7,9 @@ os:
   - linux
   - osx
 
-go: 1.11.x
+go: 1.17.x
 
-env:
-  - GO111MODULE=auto
+# env:
 
 install:
   - echo ""
