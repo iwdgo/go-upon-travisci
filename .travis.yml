@@ -23,7 +23,6 @@ before_script:
   - export GOCLONE=$(pwd)
   - git log -1 --pretty=short
   - cd $TRAVIS_BUILD_DIR
-  - mv make_travisci.bash $GOCLONE/src/make.bash # not committed
 
 script:
   - cd $GOCLONE/src
