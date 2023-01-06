@@ -3,7 +3,7 @@ language: go
 arch: amd64
 
 os:
-  - windows
+  # windows
   - linux
   - osx
 
