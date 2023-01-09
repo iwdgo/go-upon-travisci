@@ -25,14 +25,7 @@ allbash_task:
   build_script:
   - pwd
   - cd golang/go/src
-  - sh ./make.bash
-
-  test_script:
-  - cd golang/go/bin
-  - ls -al
-  - export GOROOT=
-  - go tool dist version
-  - go tool dist test
+  - sh ./all.bash
 
   always:
     binaries_artifacts:
