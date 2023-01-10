@@ -1,4 +1,4 @@
-[![Build Status](https://api.cirrus-ci.com/github/iwdgo/go-upon-ci.svg)](https://cirrus-ci.com/github/iWdGo/go-upon-ci)
+[![Build Status](https://api.cirrus-ci.com/github/iwdgo/go-upon-ci.svg)](https://api.cirrus-ci.com/github/iwdgo/go-upon-ci)
 
 # Toolchain of go lang on tip
 
