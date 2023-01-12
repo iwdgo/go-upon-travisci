@@ -26,11 +26,8 @@ before_script:
 
 script:
   - cd $GOCLONE/src
-  - sh ./make.bash
+  - sh ./all.bash
 
 after_success:
-  - rm -f ./cmd/dist/dist
-  - cd $GOCLONE
   - export GOROOT= # get last commit from version file
   - ./bin/go tool dist version
-  - ./bin/go tool dist test
