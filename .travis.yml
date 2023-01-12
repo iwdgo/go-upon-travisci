@@ -3,7 +3,7 @@ language: go
 arch: amd64
 
 os:
-  # windows
+  - windows
   - linux
   - osx
 
@@ -26,7 +26,12 @@ before_script:
 
 script:
   - cd $GOCLONE/src
-  - sh ./all.bash
+  - |
+    if [ "$TRAVIS_OS_NAME" == "windows" ]; then 
+      all.bat
+    else
+      sh ./all.bash
+    fi
 
 after_success:
   - export GOROOT= # get last commit from version file
