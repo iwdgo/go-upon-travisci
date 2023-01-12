@@ -28,7 +28,7 @@ script:
   - cd $GOCLONE/src
   - |
     if [ "$TRAVIS_OS_NAME" == "windows" ]; then 
-      all.bat
+      ./all.bat
     else
       sh ./all.bash
     fi
